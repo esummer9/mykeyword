@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,9 +39,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
 import kotlinx.coroutines.launch
-import androidx.compose.material3.Icon
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.ediapp.mykeyword.ui.favorites.FavoritesScreen
+import com.ediapp.mykeyword.ui.home.HomeScreen
+import com.ediapp.mykeyword.ui.profile.ProfileScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -131,10 +131,13 @@ fun MyKeywordApp() {
                     )
                 }
             ) { innerPadding ->
-                Greeting(
-                    name = "Android",
-                    modifier = Modifier.padding(innerPadding)
-                )
+                // TODO: Replace with a when statement to show the correct screen
+                // based on the currentDestination
+                when (currentDestination) {
+                    AppDestinations.HOME -> HomeScreen()
+                    AppDestinations.FAVORITES -> FavoritesScreen()
+                    AppDestinations.PROFILE -> ProfileScreen()
+                }
             }
         }
     }
@@ -147,20 +150,4 @@ enum class AppDestinations(
     HOME("Home", Icons.Default.Home),
     FAVORITES("Favorites", Icons.Default.Favorite),
     PROFILE("Profile", Icons.Default.AccountBox),
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    MyKeywordTheme {
-        Greeting("Android")
-    }
 }
