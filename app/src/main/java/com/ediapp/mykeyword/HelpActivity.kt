@@ -17,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 class HelpActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -27,7 +27,7 @@ class HelpActivity : ComponentActivity() {
                 Scaffold(
                     topBar = {
                         TopAppBar(
-                            title = { Text("도움말") },
+                            title = { Text("Help") },
                             navigationIcon = {
                                 IconButton(onClick = { (context as? Activity)?.finish() }) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -37,7 +37,7 @@ class HelpActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
                     Text(
-                        text = "도움말 화면",
+                        text = "Help 화면",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
