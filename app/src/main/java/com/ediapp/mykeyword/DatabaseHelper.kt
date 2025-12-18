@@ -9,7 +9,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     companion object {
         private const val DATABASE_NAME = "memos.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
 
         // tb_MEMOS 테이블
         const val TABLE_MEMOS = "tb_memos"
@@ -27,6 +27,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         const val MEMOS_COL_SIGUNGU = "sigungu"
         const val MEMOS_COL_EUPMYEONDONG = "eupmyeondong"
         const val MEMOS_COL_STATUS = "status"
+        const val MEMOS_COL_DELETED_AT = "deleted_at"
 
         private const val CREATE_TABLE_MEMOS =
             "CREATE TABLE $TABLE_MEMOS (" +
@@ -43,7 +44,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$MEMOS_COL_SIDO TEXT," +
                     "$MEMOS_COL_SIGUNGU TEXT," +
                     "$MEMOS_COL_EUPMYEONDONG TEXT," +
-                    "$MEMOS_COL_STATUS TEXT DEFAULT 'R'" +
+                    "$MEMOS_COL_STATUS TEXT DEFAULT 'R'," +
+                    "$MEMOS_COL_DELETED_AT INTEGER DEFAULT 0" +
                     ")"
 
         // tb_MEMOS 테이블
@@ -78,6 +80,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_STATUS TEXT DEFAULT 'R'")
         }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_DELETED_AT INTEGER")
+        }
     }
 
     fun addMemo(title: String, regDate: Long) {
@@ -102,13 +107,48 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     fun deleteMemo(id: Long) {
         val db = writableDatabase
-        db.delete(TABLE_MEMOS, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
+        val values = ContentValues().apply {
+            put(MEMOS_COL_DELETED_AT, System.currentTimeMillis())
+        }
+        db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
+    }
+
+    fun duplicateMemo(id: Long) {
+        val db = writableDatabase
+        val cursor = db.query(TABLE_MEMOS, null, "$MEMOS_COL_ID = ?", arrayOf(id.toString()), null, null, null)
+        if (cursor.moveToFirst()) {
+            val values = ContentValues()
+            for (i in 0 until cursor.columnCount) {
+                val columnName = cursor.getColumnName(i)
+                if (columnName != MEMOS_COL_ID) { // Don't copy the ID
+                    when (cursor.getType(i)) {
+                        // Get column values without re-querying indices
+                        android.database.Cursor.FIELD_TYPE_BLOB -> values.put(columnName, cursor.getBlob(i))
+                        android.database.Cursor.FIELD_TYPE_FLOAT -> values.put(columnName, cursor.getFloat(i))
+                        android.database.Cursor.FIELD_TYPE_INTEGER -> values.put(columnName, cursor.getLong(i))
+                        android.database.Cursor.FIELD_TYPE_STRING -> values.put(columnName, cursor.getString(i))
+                        android.database.Cursor.FIELD_TYPE_NULL -> values.putNull(columnName)
+                    }
+                }
+            }
+            // Modify title and timestamps
+            val currentTitle = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE))
+            values.put(MEMOS_COL_TITLE, "$currentTitle (copy)")
+            values.put(MEMOS_COL_TIMESTAMP, System.currentTimeMillis())
+            values.put(MEMOS_COL_REG_DATE, System.currentTimeMillis())
+//            values.putNull(MEMOS_COL_DELETED_AT) // Ensure the new copy is not deleted
+            values.put(MEMOS_COL_DELETED_AT, 0) // Ensure the new copy is not deleted
+
+            db.insert(TABLE_MEMOS, null, values)
+        }
+        cursor.close()
     }
 
     fun getAllMemos(): List<Memo> {
         val memos = mutableListOf<Memo>()
         val db = readableDatabase
-        val cursor = db.query(TABLE_MEMOS, null, null, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
+        val selection = "$MEMOS_COL_DELETED_AT < 1"
+        val cursor = db.query(TABLE_MEMOS, null, selection, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
 
         val idCol = cursor.getColumnIndexOrThrow(MEMOS_COL_ID)
         val categoryCol = cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)
@@ -127,6 +167,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
         if (cursor.moveToFirst()) {
             do {
+                // Check if deleted_at column exists before trying to access it
+                val deletedAtCol = cursor.getColumnIndex(MEMOS_COL_DELETED_AT)
+                val deletedAt = if (deletedAtCol != -1 && !cursor.isNull(deletedAtCol)) cursor.getLong(deletedAtCol) else null
+
                 val memo = Memo(
                     id = cursor.getLong(idCol),
                     category = cursor.getString(categoryCol),
@@ -135,13 +179,14 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     timestamp = cursor.getLong(timestampCol),
                     regDate = if (cursor.isNull(regDateCol)) null else cursor.getLong(regDateCol),
                     url = cursor.getString(urlCol),
-                    lat = if (cursor.isNull(latCol)) null else cursor.getDouble(latCol),
-                    lon = if (cursor.isNull(lonCol)) null else cursor.getDouble(lonCol),
+                    lat = if (cursor.isNull(latCol)) null else cursor.getString(latCol)?.toDoubleOrNull(),
+                    lon = if (cursor.isNull(lonCol)) null else cursor.getString(lonCol)?.toDoubleOrNull(),
                     address = cursor.getString(addressCol),
                     sido = cursor.getString(sidoCol),
                     sigungu = cursor.getString(sigunguCol),
                     eupmyeondong = cursor.getString(eupmyeondongCol),
-                    status = cursor.getString(statusCol)
+                    status = cursor.getString(statusCol),
+                    deleted_at = 0
                 )
                 memos.add(memo)
             } while (cursor.moveToNext())

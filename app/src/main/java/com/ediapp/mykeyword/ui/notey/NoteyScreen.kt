@@ -1,7 +1,8 @@
 package com.ediapp.mykeyword.ui.notey
 
 import android.app.DatePickerDialog
-//import androidx.compose.foundation.gestures.detectLongPressGestures
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
@@ -42,7 +42,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun NoteyScreen() {
     val context = LocalContext.current
@@ -96,11 +96,10 @@ fun NoteyScreen() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .pointerInput(memo) {
-//                                detectLongPressGestures {
-//                                    expandedMemo = memo
-//                                }
-                            }
+                            .combinedClickable(
+                                onClick = { /* No action on simple click */ },
+                                onLongClick = { expandedMemo = memo }
+                            )
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(text = memo.title ?: "")
@@ -114,6 +113,11 @@ fun NoteyScreen() {
                     ) {
                         DropdownMenuItem(text = { Text("Edit") }, onClick = {
                             openEditMemoDialog(memo)
+                            expandedMemo = null
+                        })
+                        DropdownMenuItem(text = { Text("Duplicate") }, onClick = {
+                            dbHelper.duplicateMemo(memo.id)
+                            refreshMemos()
                             expandedMemo = null
                         })
                         DropdownMenuItem(text = { Text("Delete") }, onClick = {

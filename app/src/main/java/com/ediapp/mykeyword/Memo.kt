@@ -14,5 +14,6 @@ data class Memo(
     val sido: String?,
     val sigungu: String?,
     val eupmyeondong: String?,
-    val status: String?
+    val status: String?,
+    val deleted_at: Int
 )
