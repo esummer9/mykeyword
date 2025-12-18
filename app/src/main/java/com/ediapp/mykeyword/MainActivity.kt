@@ -39,9 +39,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
-import com.ediapp.mykeyword.ui.favorites.FavoritesScreen
 import com.ediapp.mykeyword.ui.home.HomeScreen
-import com.ediapp.mykeyword.ui.profile.ProfileScreen
+import com.ediapp.mykeyword.ui.keyword.KeywordScreen
+import com.ediapp.mykeyword.ui.notey.NoteyScreen
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
 
 class MainActivity : ComponentActivity() {
@@ -68,9 +68,7 @@ fun MyKeywordApp() {
     var menuExpanded by remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
-        drawerContent = {
-
-        },
+        drawerContent = {},
         drawerState = drawerState
     ) {
         NavigationSuiteScaffold(
@@ -84,6 +82,7 @@ fun MyKeywordApp() {
                                     contentDescription = it.label,
                                     modifier = Modifier.size(25.dp)
                                 )
+
                                 is Int -> Icon(
                                     painterResource(id = icon),
                                     contentDescription = it.label,
@@ -117,7 +116,12 @@ fun MyKeywordApp() {
                                         DropdownMenuItem(
                                             text = { Text("어바웃") },
                                             onClick = {
-                                                context.startActivity(Intent(context, AboutActivity::class.java))
+                                                context.startActivity(
+                                                    Intent(
+                                                        context,
+                                                        AboutActivity::class.java
+                                                    )
+                                                )
                                                 menuExpanded = false
                                             }
                                         )
@@ -125,7 +129,12 @@ fun MyKeywordApp() {
                                         DropdownMenuItem(
                                             text = { Text("도움말") },
                                             onClick = {
-                                                context.startActivity(Intent(context, HelpActivity::class.java))
+                                                context.startActivity(
+                                                    Intent(
+                                                        context,
+                                                        HelpActivity::class.java
+                                                    )
+                                                )
                                                 menuExpanded = false
                                             }
                                         )
@@ -133,14 +142,15 @@ fun MyKeywordApp() {
                                         DropdownMenuItem(
                                             text = { Text("오픈소스") },
                                             onClick = {
-                                                context.startActivity(Intent(context,
-                                                    OpenSourceActivity::class.java))
+                                                context.startActivity(
+                                                    Intent(
+                                                        context,
+                                                        OpenSourceActivity::class.java
+                                                    )
+                                                )
                                                 menuExpanded = false
                                             }
                                         )
-
-
-
                                     }
                                 }
                             }
@@ -152,21 +162,22 @@ fun MyKeywordApp() {
                 Box(modifier = Modifier.padding(scaffoldPadding)) {
                     when (currentDestination) {
                         AppDestinations.HOME -> HomeScreen()
-                        AppDestinations.MEMO -> FavoritesScreen()
-                        AppDestinations.KEYWORD -> ProfileScreen()
+                        AppDestinations.NOTEY -> NoteyScreen()
+                        AppDestinations.KEYWORD -> KeywordScreen()
                     }
                 }
             }
         }
     }
-}
 
+}
 
 enum class AppDestinations(
     val label: String,
     val icon: Any,
 ) {
     HOME("Home", R.drawable.home),
-    MEMO("Memo", R.drawable.memo),
+    NOTEY("Notey", R.drawable.memo),
     KEYWORD("Keyword", R.drawable.keyword),
 }
+
