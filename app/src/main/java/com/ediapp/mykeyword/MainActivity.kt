@@ -7,15 +7,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
@@ -24,9 +19,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -50,7 +43,6 @@ import com.ediapp.mykeyword.ui.favorites.FavoritesScreen
 import com.ediapp.mykeyword.ui.home.HomeScreen
 import com.ediapp.mykeyword.ui.profile.ProfileScreen
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,10 +78,19 @@ fun MyKeywordApp() {
                 AppDestinations.entries.forEach {
                     item(
                         icon = {
-                            Icon(
-                                it.icon,
-                                contentDescription = it.label
-                            )
+                            when (val icon = it.icon) {
+                                is ImageVector -> Icon(
+                                    icon,
+                                    contentDescription = it.label,
+                                    modifier = Modifier.size(25.dp)
+                                )
+                                is Int -> Icon(
+                                    painterResource(id = icon),
+                                    contentDescription = it.label,
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(25.dp)
+                                )
+                            }
                         },
                         label = { Text(it.label) },
                         selected = it == currentDestination,
@@ -151,8 +152,8 @@ fun MyKeywordApp() {
                 Box(modifier = Modifier.padding(scaffoldPadding)) {
                     when (currentDestination) {
                         AppDestinations.HOME -> HomeScreen()
-                        AppDestinations.FAVORITES -> FavoritesScreen()
-                        AppDestinations.PROFILE -> ProfileScreen()
+                        AppDestinations.MEMO -> FavoritesScreen()
+                        AppDestinations.KEYWORD -> ProfileScreen()
                     }
                 }
             }
@@ -163,9 +164,9 @@ fun MyKeywordApp() {
 
 enum class AppDestinations(
     val label: String,
-    val icon: ImageVector,
+    val icon: Any,
 ) {
-    HOME("Home", Icons.Default.Home),
-    FAVORITES("Favorites", Icons.Default.Favorite),
-    PROFILE("Profile", Icons.Default.AccountBox),
+    HOME("Home", R.drawable.home),
+    MEMO("Memo", R.drawable.memo),
+    KEYWORD("Keyword", R.drawable.keyword),
 }
