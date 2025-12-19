@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
-import com.ediapp.mykeyword.Memo
 import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -50,7 +50,7 @@ import java.util.Locale
 fun NoteyScreen() {
     val context = LocalContext.current
     val dbHelper = remember { DatabaseHelper(context) }
-    var memos by remember { mutableStateOf<List<Memo>>(emptyList()) }
+    var memos: List<Memo> by remember { mutableStateOf<List<Memo>>(emptyList()) }
     var showDialog by remember { mutableStateOf(false) }
     var memoToEdit by remember { mutableStateOf<Memo?>(null) }
     var title by remember { mutableStateOf("") }
@@ -119,7 +119,13 @@ fun NoteyScreen() {
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     placeholder = { Text("Search memos...") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    )
                 )
                 IconButton(onClick = { sortDescending = !sortDescending }) {
                     Icon(

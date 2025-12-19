@@ -4,7 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import android.util.Log
+import com.ediapp.mykeyword.ui.notey.Memo
 
 class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
@@ -39,14 +39,14 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$MEMOS_COL_TIMESTAMP INTEGER," +
                     "$MEMOS_COL_REG_DATE INTEGER," +
                     "$MEMOS_COL_URL TEXT," +
-                    "$MEMOS_COL_LAT TEXT," +
-                    "$MEMOS_COL_LON TEXT," +
+                    "$MEMOS_COL_LAT REAL," +
+                    "$MEMOS_COL_LON REAL," +
                     "$MEMOS_COL_ADDRESS TEXT," +
                     "$MEMOS_COL_SIDO TEXT," +
                     "$MEMOS_COL_SIGUNGU TEXT," +
                     "$MEMOS_COL_EUPMYEONDONG TEXT," +
                     "$MEMOS_COL_STATUS TEXT DEFAULT 'R'," +
-                    "$MEMOS_COL_DELETED_AT INTEGER DEFAULT 0" +
+                    "$MEMOS_COL_DELETED_AT INTEGER" +
                     ")"
 
         // tb_MEMOS 테이블
@@ -103,8 +103,6 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             put(MEMOS_COL_TITLE, title)
             put(MEMOS_COL_REG_DATE, regDate)
         }
-
-        Log.d("DatabaseHelper", "updateMemo: id=$id, title=$title, regDate=$regDate")
         db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
     }
 
@@ -139,8 +137,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             values.put(MEMOS_COL_TITLE, "$currentTitle (copy)")
             values.put(MEMOS_COL_TIMESTAMP, System.currentTimeMillis())
             values.put(MEMOS_COL_REG_DATE, System.currentTimeMillis())
-//            values.putNull(MEMOS_COL_DELETED_AT) // Ensure the new copy is not deleted
-            values.put(MEMOS_COL_DELETED_AT, 0) // Ensure the new copy is not deleted
+            values.putNull(MEMOS_COL_DELETED_AT) // Ensure the new copy is not deleted
 
             db.insert(TABLE_MEMOS, null, values)
         }
@@ -150,46 +147,56 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     fun getAllMemos(): List<Memo> {
         val memos = mutableListOf<Memo>()
         val db = readableDatabase
-        val selection = "$MEMOS_COL_DELETED_AT < 1"
-        val cursor = db.query(TABLE_MEMOS, null, selection, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
-
-        val idCol = cursor.getColumnIndexOrThrow(MEMOS_COL_ID)
-        val categoryCol = cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)
-        val titleCol = cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)
-        val meaningCol = cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)
-        val timestampCol = cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)
-        val regDateCol = cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
-        val urlCol = cursor.getColumnIndexOrThrow(MEMOS_COL_URL)
-        val latCol = cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
-        val lonCol = cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
-        val addressCol = cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)
-        val sidoCol = cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)
-        val sigunguCol = cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)
-        val eupmyeondongCol = cursor.getColumnIndexOrThrow(MEMOS_COL_EUPMYEONDONG)
-        val statusCol = cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)
+        val selection = "$MEMOS_COL_DELETED_AT = 0"
+        val columns = arrayOf(
+            MEMOS_COL_ID,
+            MEMOS_COL_TITLE,
+            MEMOS_COL_MEANING,
+            MEMOS_COL_REG_DATE,
+            MEMOS_COL_CATEGORY,
+            MEMOS_COL_TIMESTAMP, // for sorting
+            MEMOS_COL_DELETED_AT, // for model
+            MEMOS_COL_LAT, // for model
+            MEMOS_COL_LON, // for model
+            MEMOS_COL_URL,
+            MEMOS_COL_ADDRESS, // for model
+            MEMOS_COL_SIDO, // for model
+            MEMOS_COL_SIGUNGU, // for model
+            MEMOS_COL_EUPMYEONDONG, // for model
+            MEMOS_COL_STATUS // for model
+        )
+        val cursor = db.query(TABLE_MEMOS, columns, selection, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
 
         if (cursor.moveToFirst()) {
             do {
-                // Check if deleted_at column exists before trying to access it
-                val deletedAtCol = cursor.getColumnIndex(MEMOS_COL_DELETED_AT)
-                val deletedAt = if (deletedAtCol != -1 && !cursor.isNull(deletedAtCol)) cursor.getLong(deletedAtCol) else null
-
-                val memo = Memo(
-                    id = cursor.getLong(idCol),
-                    category = cursor.getString(categoryCol),
-                    title = cursor.getString(titleCol),
-                    meaning = cursor.getString(meaningCol),
-                    timestamp = cursor.getLong(timestampCol),
-                    regDate = if (cursor.isNull(regDateCol)) null else cursor.getLong(regDateCol),
-                    url = cursor.getString(urlCol),
-                    lat = if (cursor.isNull(latCol)) null else cursor.getString(latCol)?.toDoubleOrNull(),
-                    lon = if (cursor.isNull(lonCol)) null else cursor.getString(lonCol)?.toDoubleOrNull(),
-                    address = cursor.getString(addressCol),
-                    sido = cursor.getString(sidoCol),
-                    sigungu = cursor.getString(sigunguCol),
-                    eupmyeondong = cursor.getString(eupmyeondongCol),
-                    status = cursor.getString(statusCol),
-                    deleted_at = 0
+                val memo = com.ediapp.mykeyword.ui.notey.Memo(
+                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
+                    ),
+                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
+                    ),
+                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
+                    ),
+                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                    eupmyeondong = cursor.getString(
+                        cursor.getColumnIndexOrThrow(
+                            MEMOS_COL_EUPMYEONDONG
+                        )
+                    ),
+                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
+                    )
                 )
                 memos.add(memo)
             } while (cursor.moveToNext())

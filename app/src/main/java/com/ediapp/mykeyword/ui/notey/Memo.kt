@@ -1,4 +1,4 @@
-package com.ediapp.mykeyword
+package com.ediapp.mykeyword.ui.notey
 
 data class Memo(
     val id: Long,
@@ -15,5 +15,5 @@ data class Memo(
     val sigungu: String?,
     val eupmyeondong: String?,
     val status: String?,
-    val deleted_at: Int
+    val deleted_at: Long?
 )
