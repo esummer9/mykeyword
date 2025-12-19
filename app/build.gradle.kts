@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.invoke
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,6 +18,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     buildTypes {
@@ -37,9 +43,25 @@ android {
     buildFeatures {
         compose = true
     }
+
 }
+//
+//repositories {
+//    flatDir { dirs("libs") }
+//}
+//
 
 dependencies {
+//    implementation("com.github.bab2min:kiwi-android:0.16.0") // 최신 버전을 명시
+//    implementation(files('libs/kiwi-java-v0.22.1-mac-arm64.jar'))
+        // 파일명에서 버전 정보를 제외한 이름으로 지정합니다. (예: kiwi-android-0.15.1.aar -> kiwi-android)
+//    implementation( 'kiwi-android-v0.2.22.1', ext: 'aar')
+//    implementation(files("libs/kiwi-java-v0.22.1-mac-arm64.jar"))
+    implementation(files("libs/kiwi-android-v0.22.1.aar"))
+//    implementation("com.github.bab2min:kiwi-android:0.16.0")
+//    implementation("kiwi-android-v0.22.1", ext = "aar")
+
+    //    implementation(files("libs/kiwi-android-v0.2.22.1.aar"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -47,7 +69,7 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material3) // Add this line
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
@@ -57,4 +79,5 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
 }

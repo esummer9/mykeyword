@@ -17,8 +17,12 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        flatDir {
+            dirs("libs", "app/libs")
+        }
     }
 }
 
-rootProject.name = "My Keyword"
+rootProject.name = "My_Keyword"
+
 include(":app")

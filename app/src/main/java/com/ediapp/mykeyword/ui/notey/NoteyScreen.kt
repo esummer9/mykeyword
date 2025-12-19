@@ -33,10 +33,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.Memo
+import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -54,6 +57,8 @@ fun NoteyScreen() {
     var regDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDeleteConfirmDialog by remember { mutableStateOf<Memo?>(null) }
     var expandedMemo by remember { mutableStateOf<Memo?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var sortDescending by remember { mutableStateOf(true) }
 
     fun refreshMemos() {
         memos = dbHelper.getAllMemos()
@@ -82,6 +87,20 @@ fun NoteyScreen() {
         refreshMemos()
     }
 
+    val filteredAndSortedMemos = remember(memos, searchQuery, sortDescending) {
+        val filtered = if (searchQuery.isBlank()) {
+            memos
+        } else {
+            memos.filter { it.title?.contains(searchQuery, ignoreCase = true) == true }
+        }
+
+        if (sortDescending) {
+            filtered.sortedByDescending { it.regDate }
+        } else {
+            filtered.sortedBy { it.regDate }
+        }
+    }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { openAddMemoDialog() }) {
@@ -89,41 +108,68 @@ fun NoteyScreen() {
             }
         }
     ) { padding ->
-        LazyColumn(modifier = Modifier.padding(padding).padding(16.dp)) {
-            items(memos) { memo ->
-                Box {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .combinedClickable(
-                                onClick = { /* No action on simple click */ },
-                                onLongClick = { expandedMemo = memo }
-                            )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = memo.title ?: "")
-                            Text(text = memo.meaning ?: "")
-                            Text(text = formatRegDate(memo.regDate))
+        Column(modifier = Modifier.padding(padding)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search memos...") },
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { sortDescending = !sortDescending }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.arrow),
+                        contentDescription = "Sort memos",
+                        tint = Color.Unspecified
+                    )
+                }
+            }
+
+            LazyColumn(modifier = Modifier.padding(horizontal = 16.dp)) {
+                items(filteredAndSortedMemos) { memo ->
+                    Box {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .combinedClickable(
+                                    onClick = { /* No action on simple click */ },
+                                    onLongClick = {
+                                        if (memo.category == "notey") {
+                                            expandedMemo = memo
+                                        }
+                                    }
+                                )
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(text = memo.title ?: "")
+                                Text(text = memo.meaning ?: "")
+                                Text(text = formatRegDate(memo.regDate))
+                            }
                         }
-                    }
-                    DropdownMenu(
-                        expanded = expandedMemo == memo,
-                        onDismissRequest = { expandedMemo = null }
-                    ) {
-                        DropdownMenuItem(text = { Text("Edit") }, onClick = {
-                            openEditMemoDialog(memo)
-                            expandedMemo = null
-                        })
-                        DropdownMenuItem(text = { Text("Duplicate") }, onClick = {
-                            dbHelper.duplicateMemo(memo.id)
-                            refreshMemos()
-                            expandedMemo = null
-                        })
-                        DropdownMenuItem(text = { Text("Delete") }, onClick = {
-                            showDeleteConfirmDialog = memo
-                            expandedMemo = null
-                        })
+                        DropdownMenu(
+                            expanded = expandedMemo == memo,
+                            onDismissRequest = { expandedMemo = null }
+                        ) {
+                            DropdownMenuItem(text = { Text("Edit") }, onClick = {
+                                openEditMemoDialog(memo)
+                                expandedMemo = null
+                            })
+                            DropdownMenuItem(text = { Text("Duplicate") }, onClick = {
+                                dbHelper.duplicateMemo(memo.id)
+                                refreshMemos()
+                                expandedMemo = null
+                            })
+                            DropdownMenuItem(text = { Text("Delete") }, onClick = {
+                                showDeleteConfirmDialog = memo
+                                expandedMemo = null
+                            })
+                        }
                     }
                 }
             }
