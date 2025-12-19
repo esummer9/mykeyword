@@ -4,13 +4,16 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
 import com.ediapp.mykeyword.ui.notey.Memo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
-        private const val DATABASE_NAME = "memos.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_NAME = "memos2.db"
+        private const val DATABASE_VERSION = 1
 
         // tb_MEMOS 테이블
         const val TABLE_MEMOS = "tb_memos"
@@ -46,7 +49,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$MEMOS_COL_SIGUNGU TEXT," +
                     "$MEMOS_COL_EUPMYEONDONG TEXT," +
                     "$MEMOS_COL_STATUS TEXT DEFAULT 'R'," +
-                    "$MEMOS_COL_DELETED_AT INTEGER" +
+                    "$MEMOS_COL_DELETED_AT INTEGER default 0 " +
                     ")"
 
         // tb_MEMOS 테이블
@@ -74,6 +77,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         values.put(MEMOS_COL_TITLE, "install")
         values.put(MEMOS_COL_TIMESTAMP, System.currentTimeMillis())
         values.put(MEMOS_COL_REG_DATE, System.currentTimeMillis())
+        values.put(MEMOS_COL_DELETED_AT, 0)
         db.insert(TABLE_MEMOS, null, values)
     }
 
@@ -86,15 +90,54 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         }
     }
 
-    fun addMemo(title: String, regDate: Long) {
+    fun addMemoNoTran(title: String, regDate: Long) : Long {
         val db = writableDatabase
         val values = ContentValues().apply {
             put(MEMOS_COL_CATEGORY, "notey")
             put(MEMOS_COL_TITLE, title)
             put(MEMOS_COL_TIMESTAMP, System.currentTimeMillis())
             put(MEMOS_COL_REG_DATE, regDate)
+            put(MEMOS_COL_DELETED_AT, 0)
         }
-        db.insert(TABLE_MEMOS, null, values)
+        val memoId = db.insert(TABLE_MEMOS, null, values)
+        return memoId
+    }
+
+    suspend fun addKeywords(title: String, memoId: Long) {
+        withContext(Dispatchers.IO) {
+            val db = writableDatabase
+            db.beginTransaction()
+            try {
+                if (memoId != -1L) {
+                    val myApp = context.applicationContext as MyApplication
+                    val analyzer = myApp.morphemeAnalyzer
+                    val keywords = analyzer.analyzeText(title).filter {
+                        val pos = it.substringAfterLast('/', "")
+                        pos == "NNG" || pos == "NNP"
+                    }.map {
+                        it.substringBeforeLast('/')
+                    }.distinct()
+
+                    keywords.forEach { keyword ->
+                        val keywordValues = ContentValues().apply {
+                            put(KEYWORDS_COL_KEYWORD, keyword)
+                            put(MEMOS_COL_MYWORD_ID, memoId)
+                        }
+                        db.insert(TABLE_KEYWORDS, null, keywordValues)
+                    }
+                    Log.d("MorphemeResult", "Keywords for '$title': $keywords")
+                }
+
+                db.setTransactionSuccessful()
+            } catch (e: Exception) {
+                Log.e("DatabaseHelper", "Error in addMemo transaction", e)
+            } finally {
+                if (db.inTransaction()) {
+                    db.endTransaction()
+                }
+            }
+        }
+
     }
 
     fun updateMemo(id: Long, title: String, regDate: Long) {
@@ -137,7 +180,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             values.put(MEMOS_COL_TITLE, "$currentTitle (copy)")
             values.put(MEMOS_COL_TIMESTAMP, System.currentTimeMillis())
             values.put(MEMOS_COL_REG_DATE, System.currentTimeMillis())
-            values.putNull(MEMOS_COL_DELETED_AT) // Ensure the new copy is not deleted
+            values.put(MEMOS_COL_DELETED_AT, 0)
+//            values.putNull(MEMOS_COL_DELETED_AT) // Ensure the new copy is not deleted
 
             db.insert(TABLE_MEMOS, null, values)
         }

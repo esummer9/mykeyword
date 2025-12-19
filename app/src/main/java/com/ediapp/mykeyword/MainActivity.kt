@@ -5,10 +5,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,10 +46,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.ediapp.mykeyword.service.NotificationService
 import com.ediapp.mykeyword.ui.home.HomeScreen
 import com.ediapp.mykeyword.ui.keyword.KeywordScreen
 import com.ediapp.mykeyword.ui.notey.NoteyScreen
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -55,8 +60,8 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Permission is granted. Continue the action or workflow in your
-            // app.
+            // Permission is granted. Start the service.
+            startNotificationService()
         } else {
             // Explain to the user that the feature is unavailable because the
             // feature requires a permission that the user has denied. At the
@@ -70,10 +75,33 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestNotificationPermission()
+
         setContent {
             MyKeywordTheme {
                 MyKeywordApp()
             }
+        }
+
+        val myApp: MyApplication = applicationContext as MyApplication
+        val analyzer = myApp.morphemeAnalyzer
+
+        // lifecycleScope를 사용하여 코루틴을 실행합니다.
+        lifecycleScope.launch {
+            val textToAnalyze = "안녕하세요, 형태소 분석 예시입니다."
+            val result = analyzer.analyzeText(textToAnalyze)
+
+            // 결과 확인 (예: ["안녕/NNG", "하/XSV", "시/EP", "어요/EF", ",/SP", "형태소/NNG", ...])
+            Log.d("MorphemeResult", result.toString())
+        }
+    }
+
+
+    private fun startNotificationService() {
+        val serviceIntent = Intent(this, NotificationService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
         }
     }
 
@@ -82,10 +110,17 @@ class MainActivity : ComponentActivity() {
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
+                ) == PackageManager.PERMISSION_GRANTED
             ) {
+                // Permission already granted
+                startNotificationService()
+            } else {
+                // Request permission
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+        } else {
+            // No permission needed for older versions
+            startNotificationService()
         }
     }
 }
@@ -107,27 +142,27 @@ fun MyKeywordApp() {
     ) {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
-                AppDestinations.entries.forEach {
+                AppDestinations.entries.forEach { destination ->
                     item(
                         icon = {
-                            when (val icon = it.icon) {
+                            when (val icon = destination.icon) {
                                 is ImageVector -> Icon(
                                     icon,
-                                    contentDescription = it.label,
+                                    contentDescription = destination.label,
                                     modifier = Modifier.size(25.dp)
                                 )
 
                                 is Int -> Icon(
                                     painterResource(id = icon),
-                                    contentDescription = it.label,
+                                    contentDescription = destination.label,
                                     tint = Color.Unspecified,
                                     modifier = Modifier.size(25.dp)
                                 )
                             }
                         },
-                        label = { Text(it.label) },
-                        selected = it == currentDestination,
-                        onClick = { currentDestination = it }
+                        label = { Text(destination.label) },
+                        selected = destination == currentDestination,
+                        onClick = { currentDestination = destination }
                     )
                 }
             }

@@ -45,23 +45,11 @@ android {
     }
 
 }
-//
-//repositories {
-//    flatDir { dirs("libs") }
-//}
-//
+
 
 dependencies {
-//    implementation("com.github.bab2min:kiwi-android:0.16.0") // 최신 버전을 명시
-//    implementation(files('libs/kiwi-java-v0.22.1-mac-arm64.jar'))
-        // 파일명에서 버전 정보를 제외한 이름으로 지정합니다. (예: kiwi-android-0.15.1.aar -> kiwi-android)
-//    implementation( 'kiwi-android-v0.2.22.1', ext: 'aar')
-//    implementation(files("libs/kiwi-java-v0.22.1-mac-arm64.jar"))
     implementation(files("libs/kiwi-android-v0.22.1.aar"))
-//    implementation("com.github.bab2min:kiwi-android:0.16.0")
-//    implementation("kiwi-android-v0.22.1", ext = "aar")
-
-    //    implementation(files("libs/kiwi-android-v0.2.22.1.aar"))
+    implementation("com.github.shin285:KOMORAN:3.3.9")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -72,6 +60,8 @@ dependencies {
     implementation(libs.androidx.compose.material3) // Add this line
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.compose.foundation)
+
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

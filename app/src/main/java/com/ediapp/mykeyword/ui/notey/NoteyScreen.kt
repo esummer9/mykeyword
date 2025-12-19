@@ -31,12 +31,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.R
@@ -44,6 +46,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -59,9 +64,15 @@ fun NoteyScreen() {
     var expandedMemo by remember { mutableStateOf<Memo?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var sortDescending by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
 
     fun refreshMemos() {
-        memos = dbHelper.getAllMemos()
+        scope.launch {
+            val updatedMemos = withContext(Dispatchers.IO) {
+                dbHelper.getAllMemos()
+            }
+            memos = updatedMemos
+        }
     }
 
     fun openAddMemoDialog() {
@@ -153,8 +164,8 @@ fun NoteyScreen() {
                                 )
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(text = memo.title ?: "")
-                                Text(text = memo.meaning ?: "")
+                                Text(text = memo.title ?: "", fontWeight = FontWeight.Bold)
+//                                Text(text = memo.meaning ?: "")
                                 Text(text = formatRegDate(memo.regDate))
                             }
                         }
@@ -167,8 +178,12 @@ fun NoteyScreen() {
                                 expandedMemo = null
                             })
                             DropdownMenuItem(text = { Text("Duplicate") }, onClick = {
-                                dbHelper.duplicateMemo(memo.id)
-                                refreshMemos()
+                                scope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        dbHelper.duplicateMemo(memo.id)
+                                    }
+                                    refreshMemos()
+                                }
                                 expandedMemo = null
                             })
                             DropdownMenuItem(text = { Text("Delete") }, onClick = {
@@ -229,13 +244,21 @@ fun NoteyScreen() {
             confirmButton = {
                 Button(
                     onClick = {
-                        if (memoToEdit == null) {
-                            dbHelper.addMemo(title, regDate)
-                        } else {
-                            dbHelper.updateMemo(memoToEdit!!.id, title, regDate)
+                        scope.launch {
+                            if (memoToEdit == null) {
+                                val memoId = withContext(Dispatchers.IO) {
+                                    dbHelper.addMemoNoTran(title, regDate)
+                                }
+                                dbHelper.addKeywords(title, memoId)
+
+                            } else {
+                                withContext(Dispatchers.IO) {
+                                    dbHelper.updateMemo(memoToEdit!!.id, title, regDate)
+                                }
+                            }
+                            refreshMemos()
+                            closeDialog()
                         }
-                        refreshMemos()
-                        closeDialog()
                     },
                     enabled = title.isNotBlank()
                 ) {
@@ -258,9 +281,13 @@ fun NoteyScreen() {
             confirmButton = {
                 Button(
                     onClick = {
-                        dbHelper.deleteMemo(memo.id)
-                        refreshMemos()
-                        showDeleteConfirmDialog = null
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                dbHelper.deleteMemo(memo.id)
+                            }
+                            refreshMemos()
+                            showDeleteConfirmDialog = null
+                        }
                     }
                 ) {
                     Text("Delete")
@@ -295,7 +322,7 @@ private fun formatRegDate(regDate: Long?): String {
         }
         days in 1..7 -> "$days 일 전"
         else -> {
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdf = SimpleDateFormat("yyyy-MM-dd (E)", Locale.getDefault())
             sdf.format(Date(regDate))
         }
     }
