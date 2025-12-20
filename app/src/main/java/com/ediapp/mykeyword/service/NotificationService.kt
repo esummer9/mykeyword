@@ -31,7 +31,7 @@ class NotificationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        dbHelper = DatabaseHelper(this)
+        dbHelper = DatabaseHelper.getInstance(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

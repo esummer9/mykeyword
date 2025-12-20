@@ -1,6 +1,7 @@
 package com.ediapp.mykeyword.ui.notey
 
 import android.app.DatePickerDialog
+import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
+import com.ediapp.mykeyword.EditMemoActivity
 import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -54,7 +56,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun NoteyScreen() {
     val context = LocalContext.current
-    val dbHelper = remember { DatabaseHelper(context) }
+    val dbHelper = remember { DatabaseHelper.getInstance(context) }
     var memos: List<Memo> by remember { mutableStateOf<List<Memo>>(emptyList()) }
     var showDialog by remember { mutableStateOf(false) }
     var memoToEdit by remember { mutableStateOf<Memo?>(null) }
@@ -163,10 +165,24 @@ fun NoteyScreen() {
                                     }
                                 )
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(text = memo.title ?: "", fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(text = memo.title ?: "", fontWeight = FontWeight.Bold)
 //                                Text(text = memo.meaning ?: "")
-                                Text(text = formatRegDate(memo.regDate))
+                                    Text(text = formatRegDate(memo.regDate))
+                                }
+                                IconButton(onClick = { 
+                                    val intent = Intent(context, EditMemoActivity::class.java)
+                                    intent.putExtra("MEMO_ID", memo.id)
+                                    context.startActivity(intent)
+                                }) {
+                                    Icon(painter = painterResource(id = R.drawable.edit_tool), contentDescription = "수정")
+                                }
                             }
                         }
                         DropdownMenu(
@@ -246,11 +262,12 @@ fun NoteyScreen() {
                     onClick = {
                         scope.launch {
                             if (memoToEdit == null) {
-                                val memoId = withContext(Dispatchers.IO) {
-                                    dbHelper.addMemoNoTran(title, regDate)
+                                withContext(Dispatchers.IO) {
+                                    val memoId = dbHelper.addMemoNoTran(title, regDate)
+                                    if (memoId != -1L) {
+                                        dbHelper.addKeywords(title, memoId)
+                                    }
                                 }
-                                dbHelper.addKeywords(title, memoId)
-
                             } else {
                                 withContext(Dispatchers.IO) {
                                     dbHelper.updateMemo(memoToEdit!!.id, title, regDate)

@@ -7,19 +7,19 @@ import kotlinx.coroutines.launch
 
 class MyApplication : Application() {
 
+    // lateinit으로 초기화를 지연시킵니다.
+    lateinit var morphemeAnalyzer: KomoranAnalyzer
+        private set
+
     override fun onCreate() {
         super.onCreate()
-        initializeMorphemeAnalyzer()
-    }
 
-    val morphemeAnalyzer = MorphemeAnalyzer()
-    private fun initializeMorphemeAnalyzer() {
-        // 앱의 생명주기와 연결된 CoroutineScope에서 백그라운드 초기화 실행
-        // 이 작업은 앱 시작을 지연시키지 않음
-        CoroutineScope(Dispatchers.Main).launch {
+        // Context가 완전히 준비된 onCreate에서 초기화합니다.
+        morphemeAnalyzer = KomoranAnalyzer(this)
+
+        // 코루틴을 사용하여 백그라운드에서 초기화를 수행합니다.
+        CoroutineScope(Dispatchers.IO).launch {
             morphemeAnalyzer.initialize()
         }
-    }
-    companion object {
     }
 }

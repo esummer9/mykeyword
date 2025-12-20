@@ -42,6 +42,9 @@
         <activity
             android:name=".OpenSourceActivity"
             android:exported="false" />
+        <activity
+            android:name=".EditMemoActivity"
+            android:exported="false" />
 
     </application>
 

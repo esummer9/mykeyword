@@ -12,11 +12,22 @@ import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+class DatabaseHelper private constructor(private val context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
-        private const val DATABASE_NAME = "memos1.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_NAME = "memos2.db"
+        private const val DATABASE_VERSION = 4
+
+        @Volatile
+        private var INSTANCE: DatabaseHelper? = null
+
+        fun getInstance(context: Context): DatabaseHelper {
+            return INSTANCE ?: synchronized(this) {
+                val instance = DatabaseHelper(context.applicationContext)
+                INSTANCE = instance
+                instance
+            }
+        }
 
         // tb_MEMOS 테이블
         const val TABLE_MEMOS = "tb_memos"
@@ -70,7 +81,6 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
             "CREATE TABLE " + TABLE_KEYWORDS + " (" +
                 "$KEYWORDS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
                 "$KEYWORDS_COL_KEYWORD TEXT," +
-                    "$MEMOS_COL_REG_DT TEXT," +
                 "$MEMOS_COL_MYWORD_ID INTEGER," +
                 "FOREIGN KEY($MEMOS_COL_MYWORD_ID) REFERENCES $TABLE_MEMOS($MEMOS_COL_ID)" +
                 ")"
@@ -84,7 +94,7 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
         // Insert initial data
         val now = System.currentTimeMillis()
         val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         val date = Date(now)
 
         val values = ContentValues()
@@ -100,14 +110,21 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
-
+            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_STATUS TEXT DEFAULT 'R'")
+        }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_DELETED_AT INTEGER")
+        }
+        if (oldVersion < 4) {
+            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_REG_DT TEXT")
+            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_REG_TM TEXT")
         }
     }
 
     fun addMemoNoTran(title: String, regDate: Long): Long {
         val db = writableDatabase
         val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         val date = Date(regDate)
 
         val values = ContentValues().apply {
@@ -128,8 +145,6 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
             db.beginTransaction()
             try {
                 if (memoId != -1L) {
-                    db.delete(TABLE_KEYWORDS, "$MEMOS_COL_MYWORD_ID = ?", arrayOf(memoId.toString()))
-
                     val myApp = context.applicationContext as MyApplication
                     val analyzer = myApp.morphemeAnalyzer
                     val keywords = analyzer.analyzeText(title).filter {
@@ -139,6 +154,7 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
                         it.substringBeforeLast('/')
                     }.distinct()
 
+                    db.delete(TABLE_KEYWORDS, "$MEMOS_COL_MYWORD_ID = ?", arrayOf(memoId.toString()))
                     keywords.forEach { keyword ->
                         val keywordValues = ContentValues().apply {
                             put(KEYWORDS_COL_KEYWORD, keyword)
@@ -146,7 +162,8 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
                         }
                         db.insert(TABLE_KEYWORDS, null, keywordValues)
                     }
-                    Log.d("MorphemeResult", "Keywords for '$title': $keywords")
+
+//                    Log.d("MorphemeResult", "Keywords for '$title': $keywords")
 
                     val updateValues = ContentValues().apply {
                         put(MEMOS_COL_STATUS, "A")
@@ -168,7 +185,7 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
     fun updateMemo(id: Long, title: String, regDate: Long) {
         val db = writableDatabase
         val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         val date = Date(regDate)
 
         val values = ContentValues().apply {
@@ -178,6 +195,73 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
             put(MEMOS_COL_REG_TM, sdfTime.format(date))
         }
         db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
+    }
+
+    fun updateMemo(id: Long, title: String, mean: String, address: String, url: String, regDate: Long) {
+        val db = writableDatabase
+        val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val date = Date(regDate)
+
+        val values = ContentValues().apply {
+            put(MEMOS_COL_TITLE, title)
+            put(MEMOS_COL_MEANING, mean)
+            put(MEMOS_COL_ADDRESS, address)
+            put(MEMOS_COL_URL, url)
+            put(MEMOS_COL_REG_DATE, regDate)
+            put(MEMOS_COL_REG_DT, sdfDate.format(date))
+            put(MEMOS_COL_REG_TM, sdfTime.format(date))
+        }
+        db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
+    }
+
+
+    fun getMemoById(id: Long): Memo? {
+        val db = readableDatabase
+        var memo: Memo? = null
+        val cursor = db.query(
+            TABLE_MEMOS,
+            null, // 모든 컬럼
+            "$MEMOS_COL_ID = ?",
+            arrayOf(id.toString()),
+            null, null, null
+        )
+
+        if (cursor.moveToFirst()) {
+            memo = Memo(
+                id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
+                ),
+                regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+                url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
+                ),
+                lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
+                ),
+                address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                eupmyeondong = cursor.getString(
+                    cursor.getColumnIndexOrThrow(
+                        MEMOS_COL_EUPMYEONDONG
+                    )
+                ),
+                status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
+                )
+            )
+        }
+        cursor.close()
+        return memo
     }
 
     fun deleteMemo(id: Long) {
@@ -209,7 +293,7 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
             val currentTitle = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE))
             val now = System.currentTimeMillis()
             val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             val date = Date(now)
 
             values.put(MEMOS_COL_TITLE, "$currentTitle (copy)")
@@ -260,6 +344,8 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
                     regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
                         cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
                     ),
+                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
                     url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
                     lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
                         cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
@@ -268,8 +354,6 @@ class DatabaseHelper(private val context: Context) : SQLiteOpenHelper(context, D
                         cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
                     ),
                     address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
-                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
-                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
                     sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
                     sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
                     eupmyeondong = cursor.getString(

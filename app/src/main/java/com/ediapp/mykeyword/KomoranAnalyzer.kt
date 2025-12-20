@@ -1,35 +1,48 @@
-// MorphemeAnalyzer.kt
-
 package com.ediapp.mykeyword
 
+import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kr.co.shineware.nlp.komoran.constant.DEFAULT_MODEL
 import kr.co.shineware.nlp.komoran.core.Komoran
+import java.io.File
 
-class MorphemeAnalyzer {
+class KomoranAnalyzer(private val context: Context) {
 
     private var komoran: Komoran? = null
-    // 초기화 완료 상태를 관리하기 위한 CompletableDeferred 객체
     private val initializationSignal = CompletableDeferred<Unit>()
 
-    // 초기화 함수: 백그라운드에서 실행되고, 완료되면 신호를 보냄
     suspend fun initialize() = withContext(Dispatchers.IO) {
         if (komoran == null) {
+            val userDicFile = copyUserDicFromAssets(context)
             komoran = Komoran(DEFAULT_MODEL.FULL)
-            // 초기화가 완료되었음을 알림
+            komoran?.setUserDic(userDicFile.absolutePath)
             initializationSignal.complete(Unit)
         }
     }
 
-    // 텍스트 분석 함수
+    private fun copyUserDicFromAssets(context: Context): File {
+        Log.d("context.filesDir", context.filesDir.toString())
+
+        val outFile = File(context.filesDir, "komoran/user.dict")
+        outFile.parentFile?.mkdirs()
+
+        if (!outFile.exists()) {
+            context.assets.open("user.dict").use { input ->
+                outFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+        return outFile
+    }
+
     suspend fun analyzeText(input: String): List<String> {
-        // analyzeText가 호출되면, 먼저 초기화가 완료될 때까지 기다림
         initializationSignal.await()
 
         return withContext(Dispatchers.Default) {
-            // 이 시점에서는 komoran이 non-null임을 보장할 수 있음
             val result = komoran!!.analyze(input)
             result.tokenList.map { "${it.morph}/${it.pos}" }
         }
