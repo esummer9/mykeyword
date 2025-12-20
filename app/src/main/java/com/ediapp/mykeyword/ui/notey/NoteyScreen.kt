@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -39,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
@@ -181,7 +183,7 @@ fun NoteyScreen() {
                                     intent.putExtra("MEMO_ID", memo.id)
                                     context.startActivity(intent)
                                 }) {
-                                    Icon(painter = painterResource(id = R.drawable.edit_tool), contentDescription = "수정")
+                                    Icon(painter = painterResource(id = R.drawable.edit_tool), contentDescription = "수정", modifier = Modifier.size(30.dp))
                                 }
                             }
                         }
@@ -238,7 +240,7 @@ fun NoteyScreen() {
                     TextField(
                         value = title,
                         onValueChange = { title = it },
-                        label = { Text("Title") }
+                        label = { Text(stringResource(id = R.string.title)) }
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),

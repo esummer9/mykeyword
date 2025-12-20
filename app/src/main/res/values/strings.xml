@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">NOTEY</string>
+    <string name="title">제목</string>
+    <string name="registration_date">등록일</string>
+    <string name="edit_memo">메모수정</string>
+    <string name="quick_memo">빠른 메모</string>
 </resources>

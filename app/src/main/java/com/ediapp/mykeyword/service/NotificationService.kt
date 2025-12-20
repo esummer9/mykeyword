@@ -95,7 +95,7 @@ class NotificationService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "빠른 메모"
+            val name = getString(R.string.quick_memo)
             val descriptionText = "빠른 메모 알림"
             val importance = NotificationManager.IMPORTANCE_LOW
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
@@ -110,7 +110,7 @@ class NotificationService : Service() {
     private fun createNotification(): android.app.Notification {
         // Memo Action
         val remoteInputMemo = RemoteInput.Builder(KEY_TEXT_REPLY).run {
-            setLabel("빠른 메모")
+            setLabel(getString(R.string.quick_memo))
             build()
         }
         val replyIntent = Intent(this, NotificationService::class.java).apply {
@@ -180,7 +180,7 @@ class NotificationService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.memo)
-            .setContentTitle("빠른 메모")
+            .setContentTitle(getString(R.string.quick_memo))
 //            .setContentText("여기에 메모를 추가하세요.")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pendingIntent)

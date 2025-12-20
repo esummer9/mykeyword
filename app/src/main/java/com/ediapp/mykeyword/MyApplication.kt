@@ -7,9 +7,11 @@ import kotlinx.coroutines.launch
 
 class MyApplication : Application() {
 
+
+
     // lateinit으로 초기화를 지연시킵니다.
     lateinit var morphemeAnalyzer: KomoranAnalyzer
-        private set
+       private set
 
     override fun onCreate() {
         super.onCreate()
