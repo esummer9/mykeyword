@@ -7,6 +7,8 @@ data class Memo(
     val meaning: String?,
     val timestamp: Long,
     val regDate: Long?,
+    val regDt: String?,
+    val regTm: String?,
     val url: String?,
     val lat: Double?,
     val lon: Double?,

@@ -32,18 +32,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".AboutActivity"
-            android:label="About"
-            android:theme="@style/Theme.MyKeyword" />
+            android:exported="false" />
         <activity
             android:name=".HelpActivity"
-            android:label="도움말"
-            android:theme="@style/Theme.MyKeyword" />
+            android:exported="false" />
         <activity
             android:name=".OpenSourceActivity"
-            android:label="오픈소스"
-            android:theme="@style/Theme.MyKeyword" />
+            android:exported="false" />
+
     </application>
 
 </manifest>
