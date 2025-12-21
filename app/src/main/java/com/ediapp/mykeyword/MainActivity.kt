@@ -1,12 +1,14 @@
 package com.ediapp.mykeyword
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
@@ -136,6 +139,14 @@ fun MyKeywordApp() {
 
     var menuExpanded by remember { mutableStateOf(false) }
 
+    val addMemoLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            currentDestination = AppDestinations.NOTEY
+        }
+    }
+
     ModalNavigationDrawer(
         drawerContent = {},
         drawerState = drawerState
@@ -222,6 +233,15 @@ fun MyKeywordApp() {
                                         )
                                     }
                                 }
+                            },
+                            actions = {
+                                IconButton(onClick = {
+                                    val intent = Intent(context, EditMemoActivity::class.java)
+                                    intent.putExtra("MEMO_ID", -1L) // -1L for new memo
+                                    addMemoLauncher.launch(intent)
+                                }) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add Memo")
+                                }
                             }
                         )
                         Divider(color = Color.Gray, thickness = 1.dp)
@@ -249,4 +269,3 @@ enum class AppDestinations(
     NOTEY("Notey", R.drawable.memo),
     KEYWORD("Keyword", R.drawable.keyword),
 }
-

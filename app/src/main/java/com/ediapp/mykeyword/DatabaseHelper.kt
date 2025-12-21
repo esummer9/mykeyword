@@ -197,13 +197,14 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
     }
 
-    fun updateMemo(id: Long, title: String, mean: String, address: String, url: String, regDate: Long) {
+    fun insertOrUpdateMemo(id: Long, title: String, mean: String?, address: String?, url: String?, regDate: Long) : Long {
         val db = writableDatabase
         val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         val date = Date(regDate)
 
         val values = ContentValues().apply {
+            put(MEMOS_COL_CATEGORY, "notey")
             put(MEMOS_COL_TITLE, title)
             put(MEMOS_COL_MEANING, mean)
             put(MEMOS_COL_ADDRESS, address)
@@ -212,7 +213,12 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             put(MEMOS_COL_REG_DT, sdfDate.format(date))
             put(MEMOS_COL_REG_TM, sdfTime.format(date))
         }
-        db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
+        if (id != -1L) {
+            db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
+            return id
+        }
+        else
+            return db.insert(TABLE_MEMOS, null, values)
     }
 
 

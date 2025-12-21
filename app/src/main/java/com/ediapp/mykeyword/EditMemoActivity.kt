@@ -1,5 +1,6 @@
 package com.ediapp.mykeyword
 
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.os.Bundle
@@ -55,14 +56,17 @@ class EditMemoActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val memoId = intent.getLongExtra("MEMO_ID", -1L)
-        if (memoId == -1L) {
-            finish()
-            return
-        }
 
         setContent {
             MaterialTheme {
-                EditMemoScreen(memoId = memoId, onSave = { finish() }, onNavigateBack = { finish() })
+                EditMemoScreen(
+                    memoId = memoId,
+                    onSave = {
+                        setResult(Activity.RESULT_OK)
+                        finish()
+                    },
+                    onNavigateBack = { finish() }
+                )
             }
         }
     }
@@ -99,7 +103,7 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
     )
     
     LaunchedEffect(memoId) {
-        if (!inPreview) {
+        if (!inPreview && memoId != -1L) {
             memo = withContext(Dispatchers.IO) {
                 dbHelper?.getMemoById(memoId)
             }
@@ -152,7 +156,7 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(id = R.string.edit_memo)) },
+                title = { Text(if (memoId == -1L) "메모 추가" else stringResource(id = R.string.edit_memo)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack, colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Transparent)) {
                         Icon(
@@ -172,15 +176,29 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
                     if (!inPreview) {
                         scope.launch {
                             withContext(Dispatchers.IO) {
-                                dbHelper?.updateMemo(
-                                    id = memoId,
-                                    title = title,
-                                    mean = meaning,
-                                    address = address,
-                                    url = url,
-                                    regDate = calendar.timeInMillis
-                                )
-//                            dbHelper.addKeywords(title, memoId)
+                                if (memoId == -1L) {
+                                    val newId = dbHelper?.insertOrUpdateMemo(
+                                        id = memoId,
+                                        title = title,
+                                        mean = meaning,
+                                        address = address,
+                                        url = url,
+                                        regDate = calendar.timeInMillis
+                                    )
+                                    if (newId != null && newId != -1L) {
+//                                        dbHelper.addKeywords(title, newId)
+                                    }
+                                } else {
+                                    dbHelper?.insertOrUpdateMemo(
+                                        id = memoId,
+                                        title = title,
+                                        mean = meaning,
+                                        address = address,
+                                        url = url,
+                                        regDate = calendar.timeInMillis
+                                    )
+//                                    dbHelper?.addKeywords(title, memoId)
+                                }
                             }
                             withContext(Dispatchers.Main) {
                                 onSave()
@@ -195,7 +213,7 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
             }
         }
     ) { padding ->
-        if (memo != null || inPreview) {
+        if (memo != null || memoId == -1L || inPreview) {
             Column(
                 modifier = Modifier
                     .padding(padding)
@@ -206,7 +224,7 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
 
                 TextField(value = title, onValueChange = { title = it }, label = { Text(stringResource(id = R.string.title)) }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
                 TextField(value = meaning, onValueChange = { meaning = it }, label = { Text("의미") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
-                TextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
+                TextField(value = url, { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
                 TextField(value = address, onValueChange = { address = it }, label = { Text("위치") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextField(

@@ -1,7 +1,9 @@
 package com.ediapp.mykeyword.ui.notey
 
-import android.app.DatePickerDialog
+import android.app.Activity
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -14,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -40,14 +41,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.EditMemoActivity
 import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -60,10 +59,6 @@ fun NoteyScreen() {
     val context = LocalContext.current
     val dbHelper = remember { DatabaseHelper.getInstance(context) }
     var memos: List<Memo> by remember { mutableStateOf<List<Memo>>(emptyList()) }
-    var showDialog by remember { mutableStateOf(false) }
-    var memoToEdit by remember { mutableStateOf<Memo?>(null) }
-    var title by remember { mutableStateOf("") }
-    var regDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDeleteConfirmDialog by remember { mutableStateOf<Memo?>(null) }
     var expandedMemo by remember { mutableStateOf<Memo?>(null) }
     var searchQuery by remember { mutableStateOf("") }
@@ -79,23 +74,12 @@ fun NoteyScreen() {
         }
     }
 
-    fun openAddMemoDialog() {
-        memoToEdit = null
-        title = ""
-        regDate = System.currentTimeMillis()
-        showDialog = true
-    }
-
-    fun openEditMemoDialog(memo: Memo) {
-        memoToEdit = memo
-        title = memo.title ?: ""
-        regDate = memo.regDate ?: System.currentTimeMillis()
-        showDialog = true
-    }
-
-    fun closeDialog() {
-        showDialog = false
-        memoToEdit = null
+    val editMemoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            refreshMemos()
+        }
     }
 
     LaunchedEffect(Unit) { // Refresh on initial launch
@@ -118,7 +102,11 @@ fun NoteyScreen() {
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { openAddMemoDialog() }) {
+            FloatingActionButton(onClick = {
+                val intent = Intent(context, EditMemoActivity::class.java)
+                intent.putExtra("MEMO_ID", -1L)
+                editMemoLauncher.launch(intent)
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Memo")
             }
         }
@@ -175,15 +163,14 @@ fun NoteyScreen() {
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = memo.title ?: "", fontWeight = FontWeight.Bold)
-//                                Text(text = memo.meaning ?: "")
                                     Text(text = formatRegDate(memo.regDate))
                                 }
                                 IconButton(onClick = { 
                                     val intent = Intent(context, EditMemoActivity::class.java)
                                     intent.putExtra("MEMO_ID", memo.id)
-                                    context.startActivity(intent)
+                                    editMemoLauncher.launch(intent)
                                 }) {
-                                    Icon(painter = painterResource(id = R.drawable.edit_tool), contentDescription = "수정", modifier = Modifier.size(30.dp))
+                                    Icon(painter = painterResource(id = R.drawable.edit_tool), contentDescription = "수정", modifier = Modifier.size(25.dp))
                                 }
                             }
                         }
@@ -192,7 +179,9 @@ fun NoteyScreen() {
                             onDismissRequest = { expandedMemo = null }
                         ) {
                             DropdownMenuItem(text = { Text("Edit") }, onClick = {
-                                openEditMemoDialog(memo)
+                                val intent = Intent(context, EditMemoActivity::class.java)
+                                intent.putExtra("MEMO_ID", memo.id)
+                                editMemoLauncher.launch(intent)
                                 expandedMemo = null
                             })
                             DropdownMenuItem(text = { Text("Duplicate") }, onClick = {
@@ -213,83 +202,6 @@ fun NoteyScreen() {
                 }
             }
         }
-    }
-
-    if (showDialog) {
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = regDate
-        }
-        val datePickerDialog = DatePickerDialog(
-            context,
-            { _, year, month, dayOfMonth ->
-                calendar.set(year, month, dayOfMonth)
-                regDate = calendar.timeInMillis
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        )
-
-        val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-
-        AlertDialog(
-            onDismissRequest = { closeDialog() },
-            title = { Text(if (memoToEdit == null) "Add Memo" else "Edit Memo") },
-            text = {
-                Column {
-                    TextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text(stringResource(id = R.string.title)) }
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextField(
-                            value = dateFormatter.format(regDate),
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Date") },
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { datePickerDialog.show() }) {
-                            Icon(Icons.Default.DateRange, contentDescription = "Select date")
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            if (memoToEdit == null) {
-                                withContext(Dispatchers.IO) {
-                                    val memoId = dbHelper.addMemoNoTran(title, regDate)
-                                    if (memoId != -1L) {
-                                        dbHelper.addKeywords(title, memoId)
-                                    }
-                                }
-                            } else {
-                                withContext(Dispatchers.IO) {
-                                    dbHelper.updateMemo(memoToEdit!!.id, title, regDate)
-                                }
-                            }
-                            refreshMemos()
-                            closeDialog()
-                        }
-                    },
-                    enabled = title.isNotBlank()
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                Button(onClick = { closeDialog() }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 
     showDeleteConfirmDialog?.let { memo ->
@@ -326,23 +238,15 @@ private fun formatRegDate(regDate: Long?): String {
 
     val currentTime = System.currentTimeMillis()
     val diff = currentTime - regDate
-
-    val minutes = diff / (1000 * 60)
-    val hours = diff / (1000 * 60 * 60)
-    val days = diff / (1000 * 60 * 60 * 24)
+    val seconds = diff / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
 
     return when {
-        days < 1 -> {
-            if (hours < 1) {
-                if (minutes < 1) "방금 전" else "$minutes 분 전"
-            } else {
-                "$hours 시간 전"
-            }
-        }
-        days in 1..7 -> "$days 일 전"
-        else -> {
-            val sdf = SimpleDateFormat("yyyy-MM-dd (E)", Locale.getDefault())
-            sdf.format(Date(regDate))
-        }
+        days > 0 -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(regDate))
+        hours > 0 -> "${hours}시간 전"
+        minutes > 0 -> "${minutes}분 전"
+        else -> "방금 전"
     }
 }
