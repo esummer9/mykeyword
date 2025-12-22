@@ -191,7 +191,9 @@ class NotificationService : Service() {
     }
 
     private fun addMemoToDatabase(memoText: String) {
-        dbHelper.addMemoNoTran(memoText, System.currentTimeMillis())
+        dbHelper.addMemo(title=memoText,
+            mean = null, url = null, address = null,
+            regDate = System.currentTimeMillis())
     }
 
     private fun recreateNotification() {

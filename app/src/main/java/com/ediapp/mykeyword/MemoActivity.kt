@@ -172,13 +172,13 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
+                enabled = title.isNotBlank(),
                 onClick = {
                     if (!inPreview) {
                         scope.launch {
                             withContext(Dispatchers.IO) {
                                 if (memoId == -1L) {
-                                    val newId = dbHelper?.insertOrUpdateMemo(
-                                        id = memoId,
+                                    val newId = dbHelper?.addMemo(
                                         title = title,
                                         mean = meaning,
                                         address = address,
@@ -189,7 +189,7 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
 //                                        dbHelper.addKeywords(title, newId)
                                     }
                                 } else {
-                                    dbHelper?.insertOrUpdateMemo(
+                                    dbHelper?.updateMemo(
                                         id = memoId,
                                         title = title,
                                         mean = meaning,
@@ -222,8 +222,8 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
             ) {
 
 
-                TextField(value = title, onValueChange = { title = it }, label = { Text(stringResource(id = R.string.title)) }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
-                TextField(value = meaning, onValueChange = { meaning = it }, label = { Text("의미") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
+                TextField(value = title, onValueChange = { title = it }, label = { Text(stringResource(id = R.string.title)) }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors, singleLine = true)
+                TextField(value = meaning, onValueChange = { meaning = it }, label = { Text("의미") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors, minLines = 3)
                 TextField(value = url, { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
                 TextField(value = address, onValueChange = { address = it }, label = { Text("위치") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
                 Row(verticalAlignment = Alignment.CenterVertically) {

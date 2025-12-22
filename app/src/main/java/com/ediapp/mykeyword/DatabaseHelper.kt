@@ -121,7 +121,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         }
     }
 
-    fun addMemoNoTran(title: String, regDate: Long): Long {
+    fun addMemo(title: String, mean: String?, address: String?, url: String?, regDate: Long): Long {
         val db = writableDatabase
         val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
@@ -130,6 +130,9 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         val values = ContentValues().apply {
             put(MEMOS_COL_CATEGORY, "notey")
             put(MEMOS_COL_TITLE, title)
+            put(MEMOS_COL_MEANING, mean)
+            put(MEMOS_COL_ADDRESS, address)
+            put(MEMOS_COL_URL, url)
             put(MEMOS_COL_TIMESTAMP, System.currentTimeMillis())
             put(MEMOS_COL_REG_DATE, regDate)
             put(MEMOS_COL_REG_DT, sdfDate.format(date))
@@ -155,6 +158,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
                     }.distinct()
 
                     db.delete(TABLE_KEYWORDS, "$MEMOS_COL_MYWORD_ID = ?", arrayOf(memoId.toString()))
+
                     keywords.forEach { keyword ->
                         val keywordValues = ContentValues().apply {
                             put(KEYWORDS_COL_KEYWORD, keyword)
@@ -182,29 +186,13 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         }
     }
 
-    fun updateMemo(id: Long, title: String, regDate: Long) {
+    fun updateMemo(id: Long, title: String, mean: String, address: String, url: String, regDate: Long) {
         val db = writableDatabase
         val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         val date = Date(regDate)
 
         val values = ContentValues().apply {
-            put(MEMOS_COL_TITLE, title)
-            put(MEMOS_COL_REG_DATE, regDate)
-            put(MEMOS_COL_REG_DT, sdfDate.format(date))
-            put(MEMOS_COL_REG_TM, sdfTime.format(date))
-        }
-        db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
-    }
-
-    fun insertOrUpdateMemo(id: Long, title: String, mean: String?, address: String?, url: String?, regDate: Long) : Long {
-        val db = writableDatabase
-        val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val sdfTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        val date = Date(regDate)
-
-        val values = ContentValues().apply {
-            put(MEMOS_COL_CATEGORY, "notey")
             put(MEMOS_COL_TITLE, title)
             put(MEMOS_COL_MEANING, mean)
             put(MEMOS_COL_ADDRESS, address)
@@ -213,12 +201,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             put(MEMOS_COL_REG_DT, sdfDate.format(date))
             put(MEMOS_COL_REG_TM, sdfTime.format(date))
         }
-        if (id != -1L) {
-            db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
-            return id
-        }
-        else
-            return db.insert(TABLE_MEMOS, null, values)
+        db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
     }
 
 
@@ -272,10 +255,25 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
     fun deleteMemo(id: Long) {
         val db = writableDatabase
-        val values = ContentValues().apply {
-            put(MEMOS_COL_DELETED_AT, System.currentTimeMillis())
+        db.beginTransaction()
+        try {
+            // "deleted_at" 컬럼 업데이트로 "soft delete" 처리
+            val values = ContentValues().apply {
+                put(MEMOS_COL_DELETED_AT, System.currentTimeMillis())
+            }
+            db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
+
+            // 키워드도 함께 삭제
+            deleteKeywordsForMemo(db, id)
+
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
         }
-        db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
+    }
+
+    private fun deleteKeywordsForMemo(db: SQLiteDatabase, memoId: Long) {
+        db.delete(TABLE_KEYWORDS, "$MEMOS_COL_MYWORD_ID = ?", arrayOf(memoId.toString()))
     }
 
     fun duplicateMemo(id: Long) {
@@ -318,26 +316,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         val memos = mutableListOf<Memo>()
         val db = readableDatabase
         val selection = "$MEMOS_COL_DELETED_AT = 0"
-        val columns = arrayOf(
-            MEMOS_COL_ID,
-            MEMOS_COL_TITLE,
-            MEMOS_COL_MEANING,
-            MEMOS_COL_REG_DATE,
-            MEMOS_COL_REG_DT,
-            MEMOS_COL_REG_TM,
-            MEMOS_COL_CATEGORY,
-            MEMOS_COL_TIMESTAMP, // for sorting
-            MEMOS_COL_DELETED_AT, // for model
-            MEMOS_COL_LAT, // for model
-            MEMOS_COL_LON, // for model
-            MEMOS_COL_URL,
-            MEMOS_COL_ADDRESS, // for model
-            MEMOS_COL_SIDO, // for model
-            MEMOS_COL_SIGUNGU, // for model
-            MEMOS_COL_EUPMYEONDONG, // for model
-            MEMOS_COL_STATUS // for model
-        )
-        val cursor = db.query(TABLE_MEMOS, columns, selection, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
+        val cursor = db.query(TABLE_MEMOS, null, selection, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
 
         if (cursor.moveToFirst()) {
             do {
