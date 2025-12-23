@@ -34,7 +34,7 @@
         </activity>
 
         <activity
-            android:name=".AboutActivity"
+            android:name=".UserDictionaryActivity"
             android:exported="false" />
         <activity
             android:name=".HelpActivity"
@@ -43,7 +43,7 @@
             android:name=".OpenSourceActivity"
             android:exported="false" />
         <activity
-            android:name=".EditMemoActivity"
+            android:name=".MemoActivity"
             android:exported="false" />
 
     </application>

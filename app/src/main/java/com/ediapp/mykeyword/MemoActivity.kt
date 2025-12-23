@@ -51,7 +51,7 @@ import java.util.Calendar
 import java.util.Locale
 
 
-class EditMemoActivity : ComponentActivity() {
+class MemoActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

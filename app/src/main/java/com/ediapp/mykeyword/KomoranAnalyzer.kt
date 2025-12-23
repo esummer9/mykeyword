@@ -25,7 +25,6 @@ class KomoranAnalyzer(private val context: Context) {
 
     private fun copyUserDicFromAssets(context: Context): File {
         Log.d("context.filesDir", context.filesDir.toString())
-
         val outFile = File(context.filesDir, "komoran/user.dict")
         outFile.parentFile?.mkdirs()
 

@@ -44,7 +44,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
-import com.ediapp.mykeyword.EditMemoActivity
+import com.ediapp.mykeyword.MemoActivity
 import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -68,7 +68,7 @@ fun NoteyScreen() {
     fun refreshMemos() {
         scope.launch {
             val updatedMemos = withContext(Dispatchers.IO) {
-                dbHelper.getAllMemos()
+                dbHelper.getAllMemos(null)
             }
             memos = updatedMemos
         }
@@ -103,7 +103,7 @@ fun NoteyScreen() {
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                val intent = Intent(context, EditMemoActivity::class.java)
+                val intent = Intent(context,MemoActivity::class.java)
                 intent.putExtra("MEMO_ID", -1L)
                 editMemoLauncher.launch(intent)
             }) {
@@ -166,7 +166,7 @@ fun NoteyScreen() {
                                     Text(text = formatRegDate(memo.regDate))
                                 }
                                 IconButton(onClick = { 
-                                    val intent = Intent(context, EditMemoActivity::class.java)
+                                    val intent = Intent(context, MemoActivity::class.java)
                                     intent.putExtra("MEMO_ID", memo.id)
                                     editMemoLauncher.launch(intent)
                                 }) {
@@ -179,7 +179,7 @@ fun NoteyScreen() {
                             onDismissRequest = { expandedMemo = null }
                         ) {
                             DropdownMenuItem(text = { Text("Edit") }, onClick = {
-                                val intent = Intent(context, EditMemoActivity::class.java)
+                                val intent = Intent(context, MemoActivity::class.java)
                                 intent.putExtra("MEMO_ID", memo.id)
                                 editMemoLauncher.launch(intent)
                                 expandedMemo = null

@@ -12,7 +12,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +37,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -134,7 +132,6 @@ class MainActivity : ComponentActivity() {
 fun MyKeywordApp() {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     var menuExpanded by remember { mutableStateOf(false) }
@@ -194,12 +191,12 @@ fun MyKeywordApp() {
                                         onDismissRequest = { menuExpanded = false }
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text("어바웃") },
+                                            text = { Text("사용자 사전") },
                                             onClick = {
                                                 context.startActivity(
                                                     Intent(
                                                         context,
-                                                        AboutActivity::class.java
+                                                        UserDictionaryActivity::class.java
                                                     )
                                                 )
                                                 menuExpanded = false
@@ -236,7 +233,7 @@ fun MyKeywordApp() {
                             },
                             actions = {
                                 IconButton(onClick = {
-                                    val intent = Intent(context, EditMemoActivity::class.java)
+                                    val intent = Intent(context, MemoActivity::class.java)
                                     intent.putExtra("MEMO_ID", -1L) // -1L for new memo
                                     addMemoLauncher.launch(intent)
                                 }) {
