@@ -138,7 +138,7 @@ class UserDictionaryActivity : ComponentActivity() {
                                 } else {
                                     userDics = dbHelper.getAllUserDics()
 
-
+                                    WriteUserDic(context, UserDicItem(keyword, pos))
                                     showEditDialog = null
                                 }
                             }

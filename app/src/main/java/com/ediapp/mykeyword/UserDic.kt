@@ -5,7 +5,7 @@ import java.io.File
 
 data class UserDicItem(val keyword: String, val pos: String)
 
-fun addOrUpdateUserDic(context: Context, item: UserDicItem) {
+fun WriteUserDic(context: Context, item: UserDicItem) {
     val userDicFile = File(context.filesDir, "komoran/user.dict")
     userDicFile.parentFile?.mkdirs()
 
