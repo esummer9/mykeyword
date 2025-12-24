@@ -137,6 +137,8 @@ class UserDictionaryActivity : ComponentActivity() {
                                     Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
                                 } else {
                                     userDics = dbHelper.getAllUserDics()
+
+
                                     showEditDialog = null
                                 }
                             }

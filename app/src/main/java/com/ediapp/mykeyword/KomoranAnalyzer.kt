@@ -1,7 +1,6 @@
 package com.ediapp.mykeyword
 
 import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,26 +15,17 @@ class KomoranAnalyzer(private val context: Context) {
 
     suspend fun initialize() = withContext(Dispatchers.IO) {
         if (komoran == null) {
-            val userDicFile = copyUserDicFromAssets(context)
             komoran = Komoran(DEFAULT_MODEL.FULL)
-            komoran?.setUserDic(userDicFile.absolutePath)
+            reloadUserDic()
             initializationSignal.complete(Unit)
         }
     }
 
-    private fun copyUserDicFromAssets(context: Context): File {
-        Log.d("context.filesDir", context.filesDir.toString())
-        val outFile = File(context.filesDir, "komoran/user.dict")
-        outFile.parentFile?.mkdirs()
-
-        if (!outFile.exists()) {
-            context.assets.open("user.dict").use { input ->
-                outFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
+    suspend fun reloadUserDic() = withContext(Dispatchers.IO) {
+        val userDicFile = File(context.filesDir, "komoran/user.dict")
+        if (userDicFile.exists()) {
+            komoran?.setUserDic(userDicFile.absolutePath)
         }
-        return outFile
     }
 
     suspend fun analyzeText(input: String): List<String> {
