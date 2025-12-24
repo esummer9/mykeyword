@@ -165,19 +165,19 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
     suspend fun addKeywords(title: String, memoId: Long) {
         withContext(Dispatchers.IO) {
-            val db = writableDatabase
-            db.beginTransaction()
-            try {
-                if (memoId != -1L) {
-                    val myApp = context.applicationContext as MyApplication
-                    val analyzer = myApp.morphemeAnalyzer
-                    val keywords = analyzer.analyzeText(title).filter {
-                        val pos = it.substringAfterLast('/', "")
-                        pos == "NNG" || pos == "NNP"
-                    }.map {
-                        it.substringBeforeLast('/')
-                    }.distinct()
+            if (memoId != -1L) {
+                val myApp = context.applicationContext as MyApplication
+                val analyzer = myApp.morphemeAnalyzer
+                val keywords = analyzer.analyzeText(title).filter {
+                    val pos = it.substringAfterLast('/', "")
+                    pos == "NNG" || pos == "NNP"
+                }.map {
+                    it.substringBeforeLast('/')
+                }.distinct()
 
+                val db = writableDatabase
+                db.beginTransaction()
+                try {
                     db.delete(TABLE_KEYWORDS, "$MEMOS_COL_MYWORD_ID = ?", arrayOf(memoId.toString()))
 
                     keywords.forEach { keyword ->
@@ -188,20 +188,18 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
                         db.insert(TABLE_KEYWORDS, null, keywordValues)
                     }
 
-//                    Log.d("MorphemeResult", "Keywords for '$title': $keywords")
-
                     val updateValues = ContentValues().apply {
                         put(MEMOS_COL_STATUS, "A")
                     }
                     db.update(TABLE_MEMOS, updateValues, "$MEMOS_COL_ID = ?", arrayOf(memoId.toString()))
-                }
 
-                db.setTransactionSuccessful()
-            } catch (e: Exception) {
-                Log.e("DatabaseHelper", "Error in addKeywords transaction", e)
-            } finally {
-                if (db.inTransaction()) {
-                    db.endTransaction()
+                    db.setTransactionSuccessful()
+                } catch (e: Exception) {
+                    Log.e("DatabaseHelper", "Error in addKeywords transaction", e)
+                } finally {
+                    if (db.inTransaction()) {
+                        db.endTransaction()
+                    }
                 }
             }
         }
@@ -409,6 +407,39 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
                     addKeywords(memo.title, memo.id)
             }
         }
+    }
+
+    fun addOrUpdateUserDic(_id: Long, keyword: String, pos: String): Long {
+        val db = writableDatabase
+        val cursor = db.query(
+            TABLE_DICS,
+            arrayOf(DICS_COL_ID),
+            "$DICS_COL_KEYWORD = ? AND $DICS_COL_POS = ?",
+            arrayOf(keyword, pos),
+            null, null, null
+        )
+        if (cursor.count > 0) {
+            cursor.close()
+            return -1L // Already exists
+        }
+        cursor.close()
+
+        val values = ContentValues().apply {
+            put(DICS_COL_KEYWORD, keyword)
+            put(DICS_COL_POS, pos)
+        }
+        if (_id > -0L) {
+            db.update(TABLE_DICS, values, "$DICS_COL_ID = ?", arrayOf(_id.toString()))
+            return _id
+        }
+        else
+            return db.insert(TABLE_DICS, null, values)
+    }
+
+    fun deleteUserDic(_id: Long): Long {
+        val db = writableDatabase
+        db.delete(TABLE_DICS, "$DICS_COL_ID = ?", arrayOf(_id.toString()))
+        return 0
     }
 
     fun getAllUserDics(): List<UserDic> {

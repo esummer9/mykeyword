@@ -2,22 +2,38 @@ package com.ediapp.mykeyword
 
 import android.app.Activity
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -53,6 +69,10 @@ class UserDictionaryActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val dbHelper = remember { DatabaseHelper.getInstance(context) }
                 var userDics by remember { mutableStateOf(dbHelper.getAllUserDics()) }
+                var showAddDialog by remember { mutableStateOf(false) }
+                var showEditDialog by remember { mutableStateOf<UserDic?>(null) }
+                var showDeleteConfirmDialog by remember { mutableStateOf<UserDic?>(null) }
+                var expandedMenuUserDic by remember { mutableStateOf<UserDic?>(null) }
 
                 Scaffold(
                     topBar = {
@@ -68,12 +88,81 @@ class UserDictionaryActivity : ComponentActivity() {
                                 }
                             }
                         )
+                    },
+                    floatingActionButton = {
+                        FloatingActionButton(onClick = { showAddDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Keyword")
+                        }
                     }
                 ) { innerPadding ->
                     LazyColumn(modifier = Modifier.padding(innerPadding)) {
                         items(userDics) { userDic ->
-                            UserDicItem(userDic)
+                            UserDicItem(
+                                userDic = userDic,
+                                isMenuExpanded = expandedMenuUserDic == userDic,
+                                onLongClick = { expandedMenuUserDic = userDic },
+                                onDismissMenu = { expandedMenuUserDic = null },
+                                onEdit = {
+                                    showEditDialog = userDic
+                                    expandedMenuUserDic = null
+                                },
+                                onDelete = {
+                                    showDeleteConfirmDialog = userDic
+                                    expandedMenuUserDic = null
+                                }
+                            )
                         }
+                    }
+
+                    if (showAddDialog) {
+                        EditKeywordDialog(
+                            onDismiss = { showAddDialog = false },
+                            onConfirm = { keyword, pos ->
+                                if (dbHelper.addOrUpdateUserDic(0L, keyword, pos) == -1L) {
+                                    Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    userDics = dbHelper.getAllUserDics()
+                                    showAddDialog = false
+                                }
+                            }
+                        )
+                    }
+
+                    showEditDialog?.let { userDic ->
+                        EditKeywordDialog(
+                            userDic = userDic,
+                            onDismiss = { showEditDialog = null },
+                            onConfirm = { keyword, pos ->
+                                if (dbHelper.addOrUpdateUserDic(userDic.id, keyword, pos) == -1L) {
+                                    Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    userDics = dbHelper.getAllUserDics()
+                                    showEditDialog = null
+                                }
+                            }
+                        )
+                    }
+
+                    showDeleteConfirmDialog?.let { userDic ->
+                        AlertDialog(
+                            onDismissRequest = { showDeleteConfirmDialog = null },
+                            title = { Text("삭제 확인") },
+                            text = { Text("'${userDic.keyword}'을(를) 삭제하시겠습니까?") },
+                            confirmButton = {
+                                Button(onClick = {
+                                    dbHelper.deleteUserDic(userDic.id)
+                                    userDics = dbHelper.getAllUserDics()
+                                    showDeleteConfirmDialog = null
+                                }) {
+                                    Text("삭제")
+                                }
+                            },
+                            dismissButton = {
+                                Button(onClick = { showDeleteConfirmDialog = null }) {
+                                    Text("취소")
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -81,20 +170,129 @@ class UserDictionaryActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserDicItem(userDic: UserDic) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 8.dp)
-    ) {
-        Row(
+fun EditKeywordDialog(
+    userDic: UserDic? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String) -> Unit
+) {
+    var keyword by remember { mutableStateOf(userDic?.keyword ?: "") }
+    var expanded by remember { mutableStateOf(false) }
+    val posDisplayMap = remember {
+        linkedMapOf(
+            "NNG" to "일반명사",
+            "NNP" to "고유명사",
+            "NNB" to "의존명사",
+            "NP" to "대명사",
+            "NR" to "수사",
+            "NA" to "불능"
+        )
+    }
+    val posOptions = remember { posDisplayMap.keys.toList() }
+    var selectedPos by remember { mutableStateOf(userDic?.pos ?: posOptions[0]) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (userDic == null) "키워드 추가" else "키워드 수정") },
+        text = {
+            Column {
+                TextField(
+                    value = keyword,
+                    onValueChange = { keyword = it },
+                    label = { Text("키워드") }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    TextField(
+                        value = posDisplayMap[selectedPos] ?: selectedPos,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("품사") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        posOptions.forEach { pos ->
+                            DropdownMenuItem(
+                                text = { Text(posDisplayMap[pos] ?: pos) },
+                                onClick = {
+                                    selectedPos = pos
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(keyword, selectedPos) }) {
+                Text(if (userDic == null) "추가" else "수정")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun UserDicItem(
+    userDic: UserDic,
+    isMenuExpanded: Boolean,
+    onLongClick: () -> Unit,
+    onDismissMenu: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val posDisplayMap = remember {
+        linkedMapOf(
+            "NNG" to "일반명사",
+            "NNP" to "고유명사",
+            "NNB" to "의존명사",
+            "NP" to "대명사",
+            "NR" to "수사",
+            "NA" to "불능"
+        )
+    }
+    Box {
+        Card(
             modifier = Modifier
-                .padding(16.dp)
                 .fillMaxWidth()
+                .padding(vertical = 4.dp, horizontal = 8.dp)
+                .combinedClickable(
+                    onClick = { },
+                    onLongClick = onLongClick
+                )
         ) {
-            Text(text = userDic.keyword, modifier = Modifier.weight(1f))
-            Text(text = userDic.pos)
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+            ) {
+                Text(text = userDic.keyword, modifier = Modifier.weight(1f))
+                Text(text = posDisplayMap[userDic.pos] ?: userDic.pos)
+            }
+        }
+        DropdownMenu(
+            expanded = isMenuExpanded,
+            onDismissRequest = onDismissMenu
+        ) {
+            DropdownMenuItem(
+                text = { Text("수정") },
+                onClick = onEdit
+            )
+            DropdownMenuItem(
+                text = { Text("삭제") },
+                onClick = onDelete
+            )
         }
     }
 }
