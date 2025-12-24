@@ -42,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -73,6 +74,7 @@ class UserDictionaryActivity : ComponentActivity() {
                 var showEditDialog by remember { mutableStateOf<UserDic?>(null) }
                 var showDeleteConfirmDialog by remember { mutableStateOf<UserDic?>(null) }
                 var expandedMenuUserDic by remember { mutableStateOf<UserDic?>(null) }
+                var fabMenuExpanded by remember { mutableStateOf(false) }
 
                 Scaffold(
                     topBar = {
@@ -90,8 +92,34 @@ class UserDictionaryActivity : ComponentActivity() {
                         )
                     },
                     floatingActionButton = {
-                        FloatingActionButton(onClick = { showAddDialog = true }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Keyword")
+                        Box {
+                            FloatingActionButton(onClick = { fabMenuExpanded = !fabMenuExpanded }) {
+                                Icon(Icons.Default.Add, contentDescription = "Add Keyword")
+                            }
+                            DropdownMenu(
+                                expanded = fabMenuExpanded,
+                                onDismissRequest = { fabMenuExpanded = false },
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("추가") },
+                                    onClick = {
+                                        showAddDialog = true
+                                        fabMenuExpanded = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("재생성") },
+                                    onClick = {
+                                        val allDics = dbHelper.getAllUserDics()
+                                        allDics.forEach {
+                                            WriteUserDic(context, UserDicItem(it.keyword, it.pos))
+                                        }
+                                        Toast.makeText(context, "사용자 사전을 재생성했습니다.", Toast.LENGTH_SHORT).show()
+                                        fabMenuExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 ) { innerPadding ->
@@ -124,6 +152,7 @@ class UserDictionaryActivity : ComponentActivity() {
                                     userDics = dbHelper.getAllUserDics()
                                     showAddDialog = false
                                 }
+                                WriteUserDic(context, UserDicItem(keyword, pos))
                             }
                         )
                     }
