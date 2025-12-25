@@ -49,7 +49,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
+import kotlinx.coroutines.launch
 
 class UserDictionaryActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -199,6 +201,15 @@ class UserDictionaryActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        val myApp = applicationContext as MyApplication
+        val analyzer = myApp.morphemeAnalyzer
+        lifecycleScope.launch {
+            analyzer.initialize()
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -210,16 +221,7 @@ fun EditKeywordDialog(
 ) {
     var keyword by remember { mutableStateOf(userDic?.keyword ?: "") }
     var expanded by remember { mutableStateOf(false) }
-    val posDisplayMap = remember {
-        linkedMapOf(
-            "NNG" to "일반명사",
-            "NNP" to "고유명사",
-            "NNB" to "의존명사",
-            "NP" to "대명사",
-            "NR" to "수사",
-            "NA" to "불능"
-        )
-    }
+
     val posOptions = remember { posDisplayMap.keys.toList() }
     var selectedPos by remember { mutableStateOf(userDic?.pos ?: posOptions[0]) }
 

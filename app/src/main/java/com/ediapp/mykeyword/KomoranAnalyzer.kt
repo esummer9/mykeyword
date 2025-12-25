@@ -18,6 +18,8 @@ class KomoranAnalyzer(private val context: Context) {
             komoran = Komoran(DEFAULT_MODEL.FULL)
             reloadUserDic()
             initializationSignal.complete(Unit)
+        } else {
+            reloadUserDic()
         }
     }
 

@@ -170,7 +170,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
                 val analyzer = myApp.morphemeAnalyzer
                 val keywords = analyzer.analyzeText(title).filter {
                     val pos = it.substringAfterLast('/', "")
-                    pos == "NNG" || pos == "NNP"
+                    pos == "NNG" || pos == "NNP" || pos == "NA"
                 }.map {
                     it.substringBeforeLast('/')
                 }.distinct()

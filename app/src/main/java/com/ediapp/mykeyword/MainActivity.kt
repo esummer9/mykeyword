@@ -133,6 +133,7 @@ fun MyKeywordApp() {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val context = LocalContext.current
+    var noteyRefreshTrigger by remember { mutableStateOf(0) }
 
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -140,6 +141,7 @@ fun MyKeywordApp() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
+            noteyRefreshTrigger++
             currentDestination = AppDestinations.NOTEY
         }
     }
@@ -248,7 +250,7 @@ fun MyKeywordApp() {
                 Box(modifier = Modifier.padding(scaffoldPadding)) {
                     when (currentDestination) {
                         AppDestinations.HOME -> HomeScreen()
-                        AppDestinations.NOTEY -> NoteyScreen()
+                        AppDestinations.NOTEY -> NoteyScreen(refreshTrigger = noteyRefreshTrigger)
                         AppDestinations.KEYWORD -> KeywordScreen()
                     }
                 }

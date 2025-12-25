@@ -55,7 +55,7 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun NoteyScreen() {
+fun NoteyScreen(refreshTrigger: Int = 0) {
     val context = LocalContext.current
     val dbHelper = remember { DatabaseHelper.getInstance(context) }
     var memos: List<Memo> by remember { mutableStateOf<List<Memo>>(emptyList()) }
@@ -82,7 +82,7 @@ fun NoteyScreen() {
         }
     }
 
-    LaunchedEffect(Unit) { // Refresh on initial launch
+    LaunchedEffect(refreshTrigger) { // Refresh on initial launch
         refreshMemos()
     }
 
