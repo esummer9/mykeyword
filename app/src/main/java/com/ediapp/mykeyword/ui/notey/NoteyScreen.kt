@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
@@ -106,7 +107,7 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
                 val intent = Intent(context,MemoActivity::class.java)
                 intent.putExtra("MEMO_ID", -1L)
                 editMemoLauncher.launch(intent)
-            }) {
+            }) { <caret>
                 Icon(Icons.Default.Add, contentDescription = "Add Memo")
             }
         }
@@ -178,13 +179,13 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
                             expanded = expandedMemo == memo,
                             onDismissRequest = { expandedMemo = null }
                         ) {
-                            DropdownMenuItem(text = { Text("Edit") }, onClick = {
+                            DropdownMenuItem(text = { Text(stringResource(id = R.string.edit)) }, onClick = {
                                 val intent = Intent(context, MemoActivity::class.java)
                                 intent.putExtra("MEMO_ID", memo.id)
                                 editMemoLauncher.launch(intent)
                                 expandedMemo = null
                             })
-                            DropdownMenuItem(text = { Text("Duplicate") }, onClick = {
+                            DropdownMenuItem(text = { Text(stringResource(id = R.string.duplicate)) }, onClick = {
                                 scope.launch {
                                     withContext(Dispatchers.IO) {
                                         dbHelper.duplicateMemo(memo.id)
@@ -193,7 +194,7 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
                                 }
                                 expandedMemo = null
                             })
-                            DropdownMenuItem(text = { Text("Delete") }, onClick = {
+                            DropdownMenuItem(text = { Text(stringResource(id = R.string.delete)) }, onClick = {
                                 showDeleteConfirmDialog = memo
                                 expandedMemo = null
                             })
@@ -207,8 +208,8 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
     showDeleteConfirmDialog?.let { memo ->
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = null },
-            title = { Text("Delete Memo") },
-            text = { Text("Are you sure you want to delete this memo?") },
+            title = { Text(stringResource(id = R.string.delete_memo_title)) },
+            text = { Text(stringResource(id = R.string.delete_memo_message)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -221,12 +222,12 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
                         }
                     }
                 ) {
-                    Text("Delete")
+                    Text(stringResource(id = R.string.delete))
                 }
             },
             dismissButton = {
                 Button(onClick = { showDeleteConfirmDialog = null }) {
-                    Text("Cancel")
+                    Text(stringResource(id = R.string.cancel))
                 }
             }
         )

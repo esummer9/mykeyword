@@ -4,4 +4,10 @@
     <string name="registration_date">등록일</string>
     <string name="edit_memo">메모수정</string>
     <string name="quick_memo">빠른 메모</string>
+    <string name="edit">수정</string>
+    <string name="delete">삭제</string>
+    <string name="duplicate">복제</string>
+    <string name="delete_memo_title">메모 삭제</string>
+    <string name="delete_memo_message">이 메모를 삭제하시겠습니까?</string>
+    <string name="cancel">취소</string>
 </resources>
