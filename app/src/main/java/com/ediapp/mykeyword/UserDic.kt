@@ -17,6 +17,15 @@ val posDisplayMap =
 
 data class UserDicItem(val keyword: String, val pos: String)
 
+
+fun ReWriteUserDic(context: Context) {
+    val userDicFile = File(context.filesDir, "komoran/user.dict")
+
+    if (userDicFile.exists()) {
+        userDicFile.delete()
+    }
+}
+
 fun WriteUserDic(context: Context, item: UserDicItem) {
     val userDicFile = File(context.filesDir, "komoran/user.dict")
     userDicFile.parentFile?.mkdirs()

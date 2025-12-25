@@ -114,6 +114,7 @@ class UserDictionaryActivity : ComponentActivity() {
                                     text = { Text("재생성") },
                                     onClick = {
                                         val allDics = dbHelper.getAllUserDics()
+                                        ReWriteUserDic(context)
                                         allDics.forEach {
                                             WriteUserDic(context, UserDicItem(it.keyword, it.pos))
                                         }

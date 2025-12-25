@@ -219,6 +219,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             put(MEMOS_COL_REG_DATE, regDate)
             put(MEMOS_COL_REG_DT, sdfDate.format(date))
             put(MEMOS_COL_REG_TM, sdfTime.format(date))
+            put(MEMOS_COL_STATUS, "R")
         }
         db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
     }
