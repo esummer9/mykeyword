@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -25,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -48,6 +51,7 @@ import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.MemoActivity
 import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +68,7 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
     var expandedMemo by remember { mutableStateOf<Memo?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var sortDescending by remember { mutableStateOf(true) }
+    var selectedPeriod by remember { mutableStateOf("1주") }
     val scope = rememberCoroutineScope()
 
     fun refreshMemos() {
@@ -87,11 +92,24 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
         refreshMemos()
     }
 
-    val filteredAndSortedMemos = remember(memos, searchQuery, sortDescending) {
-        val filtered = if (searchQuery.isBlank()) {
+    val filteredAndSortedMemos = remember(memos, searchQuery, sortDescending, selectedPeriod) {
+        val dateFilteredMemos = if (selectedPeriod == "전체") {
             memos
         } else {
-            memos.filter { it.title?.contains(searchQuery, ignoreCase = true) == true }
+            val calendar = Calendar.getInstance()
+            when (selectedPeriod) {
+                "2일" -> calendar.add(Calendar.DATE, -2)
+                "1주" -> calendar.add(Calendar.WEEK_OF_YEAR, -1)
+                "1개월" -> calendar.add(Calendar.MONTH, -1)
+            }
+            val startDate = calendar.timeInMillis
+            memos.filter { it.regDate != null && it.regDate >= startDate }
+        }
+
+        val filtered = if (searchQuery.isBlank()) {
+            dateFilteredMemos
+        } else {
+            dateFilteredMemos.filter { it.title?.contains(searchQuery, ignoreCase = true) == true }
         }
 
         if (sortDescending) {
@@ -107,12 +125,30 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
                 val intent = Intent(context,MemoActivity::class.java)
                 intent.putExtra("MEMO_ID", -1L)
                 editMemoLauncher.launch(intent)
-            }) { <caret>
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Memo")
             }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                val periods = listOf("2일", "1주", "1개월", "전체")
+                periods.forEach { period ->
+                    Button(
+                        onClick = { selectedPeriod = period },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedPeriod == period) MaterialTheme.colorScheme.primary else Color.Gray
+                        )
+                    ) {
+                        Text(text = period)
+                    }
+                }
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

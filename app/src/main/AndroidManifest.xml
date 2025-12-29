@@ -46,6 +46,10 @@
             android:name=".MemoActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".KeywordMemosActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>

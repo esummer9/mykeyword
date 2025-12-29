@@ -1,5 +1,7 @@
 package com.ediapp.mykeyword.ui.keyword
 
+import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,10 +16,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +40,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.Keyword
+import com.ediapp.mykeyword.KeywordMemosActivity
 import com.ediapp.mykeyword.R
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -47,7 +52,7 @@ fun KeywordScreen() {
     val scope = rememberCoroutineScope()
 
     var keywords by remember { mutableStateOf<List<Keyword>>(emptyList()) }
-    var selectedPeriod by remember { mutableStateOf("전체") }
+    var selectedPeriod by remember { mutableStateOf("1개월") }
     var refreshKey by remember { mutableStateOf(0) }
     var showReprocessDialog by remember { mutableStateOf(false) }
     var isReprocessing by remember { mutableStateOf(false) }
@@ -115,17 +120,16 @@ fun KeywordScreen() {
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Button(onClick = { getKeywords("2일") }) {
-                        Text("2일")
-                    }
-                    Button(onClick = { getKeywords("1주") }) {
-                        Text("1주")
-                    }
-                    Button(onClick = { getKeywords("1개월") }) {
-                        Text("1개월")
-                    }
-                    Button(onClick = { getKeywords("전체") }) {
-                        Text("전체")
+                    val periods = listOf("2일", "1주", "1개월", "전체")
+                    periods.forEach { period ->
+                        Button(
+                            onClick = { getKeywords(period) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selectedPeriod == period) MaterialTheme.colorScheme.primary else Color.Gray
+                            )
+                        ) {
+                            Text(text = period)
+                        }
                     }
                 }
 
@@ -153,10 +157,16 @@ fun KeywordScreen() {
 
 @Composable
 fun KeywordItem(keyword: Keyword) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .clickable {
+                val intent = Intent(context, KeywordMemosActivity::class.java)
+                intent.putExtra("KEYWORD", keyword.keyword)
+                context.startActivity(intent)
+            }
     ) {
         Row(
             modifier = Modifier
