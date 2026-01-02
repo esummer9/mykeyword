@@ -107,7 +107,7 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
                 val intent = Intent(context,MemoActivity::class.java)
                 intent.putExtra("MEMO_ID", -1L)
                 editMemoLauncher.launch(intent)
-            }) { <caret>
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Memo")
             }
         }
