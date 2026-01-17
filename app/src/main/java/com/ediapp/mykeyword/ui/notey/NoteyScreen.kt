@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,15 +61,15 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun NoteyScreen(refreshTrigger: Int = 0) {
+fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
     val context = LocalContext.current
     val dbHelper = remember { DatabaseHelper.getInstance(context) }
     var memos: List<Memo> by remember { mutableStateOf<List<Memo>>(emptyList()) }
     var showDeleteConfirmDialog by remember { mutableStateOf<Memo?>(null) }
     var expandedMemo by remember { mutableStateOf<Memo?>(null) }
     var searchQuery by remember { mutableStateOf("") }
-    var sortDescending by remember { mutableStateOf(true) }
     var selectedPeriod by remember { mutableStateOf("1주") }
+    var quickMemoText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     fun refreshMemos() {
@@ -92,7 +93,13 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
         refreshMemos()
     }
 
-    val filteredAndSortedMemos = remember(memos, searchQuery, sortDescending, selectedPeriod) {
+    LaunchedEffect(searchVisible) {
+        if (!searchVisible) {
+//            searchQuery = ""
+        }
+    }
+
+    val filteredAndSortedMemos = remember(memos, searchQuery, selectedPeriod) {
         val dateFilteredMemos = if (selectedPeriod == "전체") {
             memos
         } else {
@@ -112,11 +119,7 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
             dateFilteredMemos.filter { it.title?.contains(searchQuery, ignoreCase = true) == true }
         }
 
-        if (sortDescending) {
-            filtered.sortedByDescending { it.regDate }
-        } else {
-            filtered.sortedBy { it.regDate }
-        }
+        filtered.sortedByDescending { it.regDate }
     }
 
     Scaffold(
@@ -131,6 +134,28 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
+            AnimatedVisibility(visible = searchVisible) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search memos...") },
+                        modifier = Modifier.weight(1f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent
+                        )
+                    )
+                }
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -149,6 +174,7 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
                     }
                 }
             }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -156,22 +182,38 @@ fun NoteyScreen(refreshTrigger: Int = 0) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search memos...") },
+                    value = quickMemoText,
+                    onValueChange = { quickMemoText = it },
+                    placeholder = { Text("Quick memo...") },
                     modifier = Modifier.weight(1f),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(5.dp),
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
                         disabledIndicatorColor = Color.Transparent
                     )
                 )
-                IconButton(onClick = { sortDescending = !sortDescending }) {
+                IconButton(onClick = {
+                    if (quickMemoText.isNotBlank()) {
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                dbHelper.addMemo(
+                                    title = quickMemoText,
+                                    mean = null,
+                                    url = null,
+                                    address = null,
+                                    regDate = System.currentTimeMillis()
+                                )
+                            }
+                            quickMemoText = ""
+                            refreshMemos()
+                        }
+                    }
+                }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.arrow),
-                        contentDescription = "Sort memos",
-                        tint = Color.Unspecified
+                        painter = painterResource(id = R.drawable.check),
+                        contentDescription = "Save Quick Memo",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }

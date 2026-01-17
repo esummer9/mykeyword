@@ -15,7 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -164,53 +163,54 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
                             contentDescription = "Back"
                         )
                     }
-                }
-            )
-        },
-        bottomBar = {
-            Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                enabled = title.isNotBlank(),
-                onClick = {
-                    if (!inPreview) {
-                        scope.launch {
-                            withContext(Dispatchers.IO) {
-                                if (memoId == -1L) {
-                                    val newId = dbHelper?.addMemo(
-                                        title = title,
-                                        mean = meaning,
-                                        address = address,
-                                        url = url,
-                                        regDate = calendar.timeInMillis
-                                    )
-                                    if (newId != null && newId != -1L) {
+                },
+                actions = {
+                    IconButton(
+                        enabled = title.isNotBlank(),
+                        onClick = {
+                            if (!inPreview) {
+                                scope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        if (memoId == -1L) {
+                                            val newId = dbHelper?.addMemo(
+                                                title = title,
+                                                mean = meaning,
+                                                address = address,
+                                                url = url,
+                                                regDate = calendar.timeInMillis
+                                            )
+                                            if (newId != null && newId != -1L) {
 //                                        dbHelper.addKeywords(title, newId)
-                                    }
-                                } else {
-                                    dbHelper?.updateMemo(
-                                        id = memoId,
-                                        title = title,
-                                        mean = meaning,
-                                        address = address,
-                                        url = url,
-                                        regDate = calendar.timeInMillis
-                                    )
+                                            }
+                                        } else {
+                                            dbHelper?.updateMemo(
+                                                id = memoId,
+                                                title = title,
+                                                mean = meaning,
+                                                address = address,
+                                                url = url,
+                                                regDate = calendar.timeInMillis
+                                            )
 //                                    dbHelper?.addKeywords(title, memoId)
+                                        }
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        onSave()
+                                    }
                                 }
-                            }
-                            withContext(Dispatchers.Main) {
+                            } else {
                                 onSave()
                             }
                         }
-                    } else {
-                        onSave()
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.check),
+                            contentDescription = "Save",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
-            ) {
-                Text("Save")
-            }
+            )
         }
     ) { padding ->
         if (memo != null || memoId == -1L || inPreview) {
