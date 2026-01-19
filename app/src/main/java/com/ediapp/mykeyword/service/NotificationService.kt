@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -20,13 +19,13 @@ import java.util.Locale
 
 class NotificationService : Service() {
 
-    private val NOTIFICATION_ID = 1
-    private val CHANNEL_ID = "quick_memo_channel"
-    private val ACTION_ADD_MEMO = "com.ediapp.mykeyword.ADD_MEMO"
-    private val ACTION_ADD_TIME = "com.ediapp.mykeyword.ADD_TIME"
-    private val ACTION_ADD_POS = "com.ediapp.mykeyword.ADD_POS"
-    private val ACTION_DUPLICATE_LAST_MEMO = "com.ediapp.mykeyword.DUPLICATE_LAST_MEMO"
-    private val KEY_TEXT_REPLY = "key_text_reply"
+    private val notificationId = 1
+    private val channelId = "quick_memo_channel_v4"
+    private val actionAddMemo = "com.ediapp.mykeyword.ADD_MEMO"
+    private val actionAddTime = "com.ediapp.mykeyword.ADD_TIME"
+    private val actionAddPos = "com.ediapp.mykeyword.ADD_POS"
+    private val actionDuplicateLastMemo = "com.ediapp.mykeyword.DUPLICATE_LAST_MEMO"
+    private val keyTextReply = "key_text_reply"
 
     private lateinit var dbHelper: DatabaseHelper
 
@@ -37,17 +36,17 @@ class NotificationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_ADD_MEMO -> handleActionAddMemo(intent)
-            ACTION_ADD_TIME -> handleActionAddTime(intent)
-            ACTION_ADD_POS -> handleActionAddPos(intent)
-            ACTION_DUPLICATE_LAST_MEMO -> handleActionDuplicateLastMemo()
+            actionAddMemo -> handleActionAddMemo(intent)
+            actionAddTime -> handleActionAddTime(intent)
+            actionAddPos -> handleActionAddPos(intent)
+            actionDuplicateLastMemo -> handleActionDuplicateLastMemo()
         }
 
         createNotificationChannel()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            startForeground(notificationId, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
-            startForeground(NOTIFICATION_ID, createNotification())
+            startForeground(notificationId, createNotification())
         }
         return START_STICKY
     }
@@ -55,7 +54,7 @@ class NotificationService : Service() {
     private fun handleActionAddMemo(intent: Intent) {
         val results = RemoteInput.getResultsFromIntent(intent)
         if (results != null) {
-            val memoText = results.getCharSequence(KEY_TEXT_REPLY)?.toString()
+            val memoText = results.getCharSequence(keyTextReply)?.toString()
             if (!memoText.isNullOrBlank()) {
                 addMemoToDatabase(memoText)
                 recreateNotification()
@@ -65,7 +64,7 @@ class NotificationService : Service() {
 
     private fun handleActionAddTime(intent: Intent) {
         val results = RemoteInput.getResultsFromIntent(intent)
-        val memoText = results?.getCharSequence(KEY_TEXT_REPLY)?.toString()
+        val memoText = results?.getCharSequence(keyTextReply)?.toString()
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val currentTime = sdf.format(Date())
 
@@ -82,7 +81,7 @@ class NotificationService : Service() {
     private fun handleActionAddPos(intent: Intent) {
         val results = RemoteInput.getResultsFromIntent(intent)
         if (results != null) {
-            val memoText = results.getCharSequence(KEY_TEXT_REPLY)?.toString()
+            val memoText = results.getCharSequence(keyTextReply)?.toString()
             if (!memoText.isNullOrBlank()) {
                 // For now, just adds memo. Later, add location.
                 addMemoToDatabase("$memoText - (위치 정보)")
@@ -114,36 +113,46 @@ class NotificationService : Service() {
             val name = getString(R.string.quick_memo)
             val descriptionText = "빠른 메모 알림"
             val importance = NotificationManager.IMPORTANCE_LOW
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+            val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
             }
-            val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notificationManager =
+                getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            // Delete old channels just in case
+            notificationManager.deleteNotificationChannel("quick_memo_channel")
+            notificationManager.deleteNotificationChannel("quick_memo_channel_v2")
+            notificationManager.deleteNotificationChannel("quick_memo_channel_v3")
             notificationManager.createNotificationChannel(channel)
         }
     }
 
     private fun createNotification(): android.app.Notification {
         // Memo Action
-        val remoteInputMemo = RemoteInput.Builder(KEY_TEXT_REPLY).run {
+        val remoteInputMemo = RemoteInput.Builder(keyTextReply).run {
             setLabel(getString(R.string.quick_memo))
             build()
         }
         val replyIntent = Intent(this, NotificationService::class.java).apply {
-            action = ACTION_ADD_MEMO
+            action = actionAddMemo
         }
         val replyPendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             PendingIntent.getForegroundService(this, 0, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
         } else {
             PendingIntent.getService(this, 0, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
         }
+        val actionMemo = NotificationCompat.Action.Builder(
+            R.drawable.ic_launcher_foreground,
+            "메모추가",
+            replyPendingIntent
+        ).addRemoteInput(remoteInputMemo).build()
+
         // Time Action
-        val remoteInputTime = RemoteInput.Builder(KEY_TEXT_REPLY).run {
+        val remoteInputTime = RemoteInput.Builder(keyTextReply).run {
             setLabel("메모 (시간 자동 추가)")
             build()
         }
         val timeIntent = Intent(this, NotificationService::class.java).apply {
-            action = ACTION_ADD_TIME
+            action = actionAddTime
         }
         val timePendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             PendingIntent.getForegroundService(this, 1, timeIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
@@ -157,12 +166,12 @@ class NotificationService : Service() {
         ).addRemoteInput(remoteInputTime).build()
 
         // Position Action
-        val remoteInputPos = RemoteInput.Builder(KEY_TEXT_REPLY).run {
+        val remoteInputPos = RemoteInput.Builder(keyTextReply).run {
             setLabel("메모 (위치 자동 추가)")
             build()
         }
         val posIntent = Intent(this, NotificationService::class.java).apply {
-            action = ACTION_ADD_POS
+            action = actionAddPos
         }
         val posPendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             PendingIntent.getForegroundService(this, 2, posIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
@@ -177,14 +186,8 @@ class NotificationService : Service() {
 
         // Duplicate Last Memo Action
         val duplicateIntent = Intent(this, NotificationService::class.java).apply {
-            action = ACTION_DUPLICATE_LAST_MEMO
+            action = actionDuplicateLastMemo
         }
-        val action = NotificationCompat.Action.Builder(
-            R.drawable.ic_launcher_foreground,
-            "메모추가",
-            replyPendingIntent
-        ).addRemoteInput(remoteInputMemo).build()
-
         val duplicatePendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             PendingIntent.getForegroundService(this, 4, duplicateIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
         } else {
@@ -193,7 +196,7 @@ class NotificationService : Service() {
 
         val actionDuplicate = NotificationCompat.Action.Builder(
             R.drawable.ic_launcher_foreground,
-            "(마지막)메모 복제",
+            "전메모 복제",
             duplicatePendingIntent
         ).build()
 
@@ -209,13 +212,14 @@ class NotificationService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.memo)
             .setContentTitle(getString(R.string.quick_memo))
 //            .setContentText("여기에 메모를 추가하세요.")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pendingIntent)
-            .addAction(action)
+            .setOngoing(true)
+            .addAction(actionMemo)
             .addAction(actionTime)
 //            .addAction(actionPos)
             .addAction(actionDuplicate)
@@ -229,8 +233,8 @@ class NotificationService : Service() {
     }
 
     private fun recreateNotification() {
-        val notificationManager: NotificationManager =
-            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, createNotification())
+        val notificationManager =
+            getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(notificationId, createNotification())
     }
 }

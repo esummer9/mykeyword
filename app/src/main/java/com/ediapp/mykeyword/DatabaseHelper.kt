@@ -127,19 +127,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < 2) {
-            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_STATUS TEXT DEFAULT 'R'")
-        }
-        if (oldVersion < 3) {
-            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_DELETED_AT INTEGER")
-        }
-        if (oldVersion < 4) {
-            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_REG_DT TEXT")
-            db.execSQL("ALTER TABLE $TABLE_MEMOS ADD COLUMN $MEMOS_COL_REG_TM TEXT")
-        }
-        if (oldVersion < 5) {
-            db.execSQL(CREATE_TABLE_USERDICS)
-        }
+
     }
 
     fun addMemo(title: String, mean: String?, address: String?, url: String?, regDate: Long): Long {
