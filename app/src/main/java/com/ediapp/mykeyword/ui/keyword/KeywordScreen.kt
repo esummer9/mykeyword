@@ -1,7 +1,10 @@
+
 package com.ediapp.mykeyword.ui.keyword
 
+import android.content.ContentValues
 import android.content.Intent
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,17 +17,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,9 +51,11 @@ import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.Keyword
 import com.ediapp.mykeyword.KeywordMemosActivity
 import com.ediapp.mykeyword.R
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun KeywordScreen() {
     val context = LocalContext.current
@@ -56,6 +67,9 @@ fun KeywordScreen() {
     var refreshKey by remember { mutableStateOf(0) }
     var showReprocessDialog by remember { mutableStateOf(false) }
     var isReprocessing by remember { mutableStateOf(false) }
+    var keywordToDelete by remember { mutableStateOf<Keyword?>(null) }
+    var expandedKeyword by remember { mutableStateOf<Keyword?>(null) } // For long press menu
+    var showAddUserDicDialog by remember { mutableStateOf<Keyword?>(null) } // For dialog
 
     fun getKeywords(period: String) {
         val calendar = Calendar.getInstance()
@@ -105,6 +119,78 @@ fun KeywordScreen() {
         )
     }
 
+    if (keywordToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { keywordToDelete = null },
+            title = { Text("키워드 삭제") },
+            text = { Text("'${keywordToDelete?.keyword}' 을(를) 삭제하시겠습니까?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            keywordToDelete?.let { dbHelper.deleteKeyword(it.keyword) }
+                            keywordToDelete = null
+                            refreshKey++
+                        }
+                    }
+                ) {
+                    Text("삭제")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { keywordToDelete = null }
+                ) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    if (showAddUserDicDialog != null) {
+        var keywordText by remember(showAddUserDicDialog) {
+            mutableStateOf(showAddUserDicDialog?.keyword ?: "")
+        }
+
+        AlertDialog(
+            onDismissRequest = { showAddUserDicDialog = null },
+            title = { Text("사용자 사전 추가") },
+            text = {
+                TextField(
+                    value = keywordText,
+                    onValueChange = { keywordText = it },
+                    label = { Text("키워드") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (keywordText.isNotBlank()) {
+                            scope.launch(Dispatchers.IO) {
+                                val db = dbHelper.writableDatabase
+                                val values = ContentValues().apply {
+                                    put(DatabaseHelper.DICS_COL_KEYWORD, keywordText)
+                                    put(DatabaseHelper.DICS_COL_POS, "NNP") // Default to Proper Noun
+                                }
+                                db.insert(DatabaseHelper.TABLE_DICS, null, values)
+                            }
+                            showAddUserDicDialog = null
+                        }
+                    }
+                ) {
+                    Text("저장")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showAddUserDicDialog = null }
+                ) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showReprocessDialog = true }) {
@@ -139,7 +225,36 @@ fun KeywordScreen() {
 
                 LazyColumn {
                     items(keywords) { keyword ->
-                        KeywordItem(keyword)
+                        Box {
+                            KeywordItem(
+                                keyword = keyword,
+                                onItemClick = { kw ->
+                                    val intent = Intent(context, KeywordMemosActivity::class.java)
+                                    intent.putExtra("KEYWORD", kw.keyword)
+                                    context.startActivity(intent)
+                                },
+                                onLongClick = { kw -> expandedKeyword = kw }
+                            )
+                            DropdownMenu(
+                                expanded = expandedKeyword == keyword,
+                                onDismissRequest = { expandedKeyword = null }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("사용자 사전 추가") },
+                                    onClick = {
+                                        showAddUserDicDialog = keyword
+                                        expandedKeyword = null
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("삭제") },
+                                    onClick = {
+                                        keywordToDelete = keyword
+                                        expandedKeyword = null
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -155,23 +270,27 @@ fun KeywordScreen() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun KeywordItem(keyword: Keyword) {
-    val context = LocalContext.current
+fun KeywordItem(
+    keyword: Keyword,
+    onItemClick: (Keyword) -> Unit,
+    onLongClick: (Keyword) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable {
-                val intent = Intent(context, KeywordMemosActivity::class.java)
-                intent.putExtra("KEYWORD", keyword.keyword)
-                context.startActivity(intent)
-            }
+            .combinedClickable(
+                onClick = { onItemClick(keyword) },
+                onLongClick = { onLongClick(keyword) }
+            )
     ) {
         Row(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = keyword.keyword, modifier = Modifier.weight(1f))
             Text(text = "${keyword.count}건")

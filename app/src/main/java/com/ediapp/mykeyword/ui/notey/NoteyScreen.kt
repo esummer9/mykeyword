@@ -1,7 +1,9 @@
 package com.ediapp.mykeyword.ui.notey
 
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Intent
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -31,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -67,6 +70,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
     var memos: List<Memo> by remember { mutableStateOf<List<Memo>>(emptyList()) }
     var showDeleteConfirmDialog by remember { mutableStateOf<Memo?>(null) }
     var expandedMemo by remember { mutableStateOf<Memo?>(null) }
+    var showAddUserDicDialog by remember { mutableStateOf<Memo?>(null) } // For dialog
     var searchQuery by remember { mutableStateOf("") }
     var selectedPeriod by remember { mutableStateOf("1주") }
     var quickMemoText by remember { mutableStateOf("") }
@@ -120,6 +124,45 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
         }
 
         filtered.sortedByDescending { it.regDate }
+    }
+
+    if (showAddUserDicDialog != null) {
+        var keywordText by remember(showAddUserDicDialog) {
+            mutableStateOf(showAddUserDicDialog?.title ?: "")
+        }
+
+        AlertDialog(
+            onDismissRequest = { showAddUserDicDialog = null },
+            title = { Text("사용자 사전 추가") },
+            text = {
+                TextField(
+                    value = keywordText,
+                    onValueChange = { keywordText = it },
+                    label = { Text("키워드") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (keywordText.isNotBlank()) {
+                            scope.launch(Dispatchers.IO) {
+                                dbHelper.addOrUpdateUserDic(-1L, keywordText, "NNP") // Default to Proper Noun
+                            }
+                            showAddUserDicDialog = null
+                        }
+                    }
+                ) {
+                    Text("저장")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showAddUserDicDialog = null }
+                ) {
+                    Text("취소")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -263,6 +306,13 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                                 editMemoLauncher.launch(intent)
                                 expandedMemo = null
                             })
+                            DropdownMenuItem(
+                                text = { Text("사용자 사전 추가") },
+                                onClick = {
+                                    showAddUserDicDialog = memo
+                                    expandedMemo = null
+                                }
+                            )
                             DropdownMenuItem(text = { Text(stringResource(id = R.string.duplicate)) }, onClick = {
                                 scope.launch {
                                     withContext(Dispatchers.IO) {

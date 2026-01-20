@@ -388,6 +388,12 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         cursor.close()
         return keywords
     }
+
+    fun deleteKeyword(keyword: String) {
+        val db = writableDatabase
+        db.delete(TABLE_KEYWORDS, "$KEYWORDS_COL_KEYWORD = ?", arrayOf(keyword))
+    }
+
     suspend fun reprocessKeywords() {
         withContext(Dispatchers.IO) {
             val memos = getAllMemos("R")
