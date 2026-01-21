@@ -306,13 +306,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                                 editMemoLauncher.launch(intent)
                                 expandedMemo = null
                             })
-                            DropdownMenuItem(
-                                text = { Text("사용자 사전 추가") },
-                                onClick = {
-                                    showAddUserDicDialog = memo
-                                    expandedMemo = null
-                                }
-                            )
+
                             DropdownMenuItem(text = { Text(stringResource(id = R.string.duplicate)) }, onClick = {
                                 scope.launch {
                                     withContext(Dispatchers.IO) {
@@ -326,6 +320,14 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                                 showDeleteConfirmDialog = memo
                                 expandedMemo = null
                             })
+
+                            DropdownMenuItem(
+                                text = { Text("사용자 사전 추가") },
+                                onClick = {
+                                    showAddUserDicDialog = memo
+                                    expandedMemo = null
+                                }
+                            )
                         }
                     }
                 }
