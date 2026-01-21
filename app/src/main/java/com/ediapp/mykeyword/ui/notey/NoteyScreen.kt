@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.MemoActivity
+import com.ediapp.mykeyword.MemoViewActivity
 import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
 import java.util.Calendar

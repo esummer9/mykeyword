@@ -233,7 +233,7 @@ fun KeywordScreen() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = "'${selectedPeriod}' 검색 결과")
+                Text(text = "'${selectedPeriod}' 필터링")
 
                 LazyColumn {
                     items(keywords) { keyword ->
