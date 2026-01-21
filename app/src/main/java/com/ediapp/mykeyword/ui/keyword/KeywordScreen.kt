@@ -3,6 +3,8 @@ package com.ediapp.mykeyword.ui.keyword
 
 import android.content.ContentValues
 import android.content.Intent
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +66,7 @@ fun KeywordScreen() {
 
     var keywords by remember { mutableStateOf<List<Keyword>>(emptyList()) }
     var selectedPeriod by remember { mutableStateOf("1개월") }
+    var myDictionaryValue by remember { mutableStateOf("") }
     var refreshKey by remember { mutableStateOf(0) }
     var showReprocessDialog by remember { mutableStateOf(false) }
     var isReprocessing by remember { mutableStateOf(false) }
@@ -151,7 +154,7 @@ fun KeywordScreen() {
         var keywordText by remember(showAddUserDicDialog) {
             mutableStateOf(showAddUserDicDialog?.keyword ?: "")
         }
-
+        myDictionaryValue = showAddUserDicDialog?.keyword ?: ""
         AlertDialog(
             onDismissRequest = { showAddUserDicDialog = null },
             title = { Text("사용자 사전 추가") },
@@ -165,15 +168,24 @@ fun KeywordScreen() {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (keywordText.isNotBlank()) {
-                            scope.launch(Dispatchers.IO) {
-                                val db = dbHelper.writableDatabase
-                                val values = ContentValues().apply {
-                                    put(DatabaseHelper.DICS_COL_KEYWORD, keywordText)
-                                    put(DatabaseHelper.DICS_COL_POS, "NNP") // Default to Proper Noun
+//                        Toast.makeText(context, myDictionaryValue, Toast.LENGTH_SHORT)
+                        Log.d("KeywordScreen", "${myDictionaryValue} != ${keywordText}")
+                        if(myDictionaryValue != keywordText) {
+                            if (keywordText.isNotBlank()) {
+                                scope.launch(Dispatchers.IO) {
+                                    val db = dbHelper.writableDatabase
+                                    val values = ContentValues().apply {
+                                        put(DatabaseHelper.DICS_COL_KEYWORD, keywordText)
+                                        put(
+                                            DatabaseHelper.DICS_COL_POS,
+                                            "NNP"
+                                        ) // Default to Proper Noun
+                                    }
+                                    db.insert(DatabaseHelper.TABLE_DICS, null, values)
                                 }
-                                db.insert(DatabaseHelper.TABLE_DICS, null, values)
+                                showAddUserDicDialog = null
                             }
+                        } else {
                             showAddUserDicDialog = null
                         }
                     }
