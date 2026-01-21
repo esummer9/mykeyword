@@ -287,8 +287,10 @@ fun MyKeywordApp() {
                                         )
                                     }
                                 }
-                                IconButton(onClick = { showAddMemoDialog = true }) {
-                                    Icon(Icons.Default.Add, contentDescription = "Add Memo")
+                                if (currentDestination != AppDestinations.HOME) {
+                                    IconButton(onClick = { showAddMemoDialog = true }) {
+                                        Icon(Icons.Default.Add, contentDescription = "Add Memo")
+                                    }
                                 }
                             }
                         )
@@ -298,7 +300,9 @@ fun MyKeywordApp() {
             ) { scaffoldPadding ->
                 Box(modifier = Modifier.padding(scaffoldPadding)) {
                     when (currentDestination) {
-                        AppDestinations.HOME -> HomeScreen()
+                        AppDestinations.HOME -> HomeScreen(
+                            onNavigateToNotey = { currentDestination = AppDestinations.NOTEY }
+                        )
                         AppDestinations.NOTEY -> NoteyScreen(
                             refreshTrigger = noteyRefreshTrigger,
                             searchVisible = searchVisible

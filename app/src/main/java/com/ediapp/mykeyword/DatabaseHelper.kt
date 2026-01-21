@@ -368,6 +368,67 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         return memos
     }
 
+    fun getRecentMemos(limit: Int = 3): List<Memo> {
+        val memos = mutableListOf<Memo>()
+        val db = readableDatabase
+        val selection = "$MEMOS_COL_DELETED_AT = 0"
+        val cursor = db.query(
+            TABLE_MEMOS,
+            null,
+            selection,
+            null,
+            null,
+            null,
+            "$MEMOS_COL_ID DESC",
+            limit.toString()
+        )
+
+        if (cursor.moveToFirst()) {
+            do {
+                val memo = Memo(
+                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)),
+                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)),
+                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(cursor.getColumnIndexOrThrow(MEMOS_COL_LON)),
+                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                    eupmyeondong = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_EUPMYEONDONG)),
+                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))
+                )
+                memos.add(memo)
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return memos
+    }
+
+    fun getTrendingKeywords(limit: Int = 10): List<Keyword> {
+        val keywords = mutableListOf<Keyword>()
+        val db = readableDatabase
+        val query = "SELECT $KEYWORDS_COL_KEYWORD, COUNT(*) as count FROM $TABLE_KEYWORDS GROUP BY $KEYWORDS_COL_KEYWORD ORDER BY count DESC LIMIT ?"
+        val cursor = db.rawQuery(query, arrayOf(limit.toString()))
+
+        if (cursor.moveToFirst()) {
+            do {
+                val keyword = cursor.getString(cursor.getColumnIndexOrThrow(KEYWORDS_COL_KEYWORD))
+                val count = cursor.getInt(cursor.getColumnIndexOrThrow("count"))
+                keywords.add(Keyword(keyword, count))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return keywords
+    }
+
+
     fun getKeywordsByDateRange(startDate: Long, endDate: Long): List<Keyword> {
         val keywords = mutableListOf<Keyword>()
         val db = readableDatabase
