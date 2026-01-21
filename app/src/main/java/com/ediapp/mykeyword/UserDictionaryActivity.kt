@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,12 +16,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -53,6 +57,25 @@ import androidx.lifecycle.lifecycleScope
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
 import kotlinx.coroutines.launch
 
+// 초성 리스트
+private val CHOSUNG = charArrayOf(
+    'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
+)
+
+// 주어진 단어의 첫 글자의 초성을 반환하는 함수
+private fun getChosung(word: String): Char? {
+    if (word.isEmpty()) return null
+    val firstChar = word[0]
+    return if (firstChar in '가'..'힣') {
+        val unicode = firstChar.code - 0xAC00
+        val chosungIndex = unicode / (21 * 28)
+        CHOSUNG[chosungIndex]
+    } else if (firstChar in 'ㄱ'..'ㅎ') {
+        firstChar
+    } else {
+        null // 한글이 아닌 경우
+    }
+}
 class UserDictionaryActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,6 +100,34 @@ class UserDictionaryActivity : ComponentActivity() {
                 var showDeleteConfirmDialog by remember { mutableStateOf<UserDic?>(null) }
                 var expandedMenuUserDic by remember { mutableStateOf<UserDic?>(null) }
                 var fabMenuExpanded by remember { mutableStateOf(false) }
+
+                // 필터링 UI 관련 상태
+                var selectedChosung by remember { mutableStateOf("전체") }
+                val chosungButtons = remember {
+                    listOf("전체", "ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ")
+                }
+                val chosungMap = remember {
+                    mapOf(
+                        'ㄱ' to listOf('ㄱ', 'ㄲ'),
+                        'ㄷ' to listOf('ㄷ', 'ㄸ'),
+                        'ㅂ' to listOf('ㅂ', 'ㅃ'),
+                        'ㅅ' to listOf('ㅅ', 'ㅆ'),
+                        'ㅈ' to listOf('ㅈ', 'ㅉ')
+                    )
+                }
+
+                val filteredUserDics = remember(userDics, selectedChosung) {
+                    if (selectedChosung == "전체") {
+                        userDics
+                    } else {
+                        val selectedChar = selectedChosung[0]
+                        val targetChars = chosungMap[selectedChar] ?: listOf(selectedChar)
+                        userDics.filter {
+                            val chosung = getChosung(it.keyword)
+                            chosung != null && chosung in targetChars
+                        }
+                    }
+                }
 
                 Scaffold(
                     topBar = {
@@ -126,22 +177,41 @@ class UserDictionaryActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    LazyColumn(modifier = Modifier.padding(innerPadding)) {
-                        items(userDics) { userDic ->
-                            UserDicItem(
-                                userDic = userDic,
-                                isMenuExpanded = expandedMenuUserDic == userDic,
-                                onLongClick = { expandedMenuUserDic = userDic },
-                                onDismissMenu = { expandedMenuUserDic = null },
-                                onEdit = {
-                                    showEditDialog = userDic
-                                    expandedMenuUserDic = null
-                                },
-                                onDelete = {
-                                    showDeleteConfirmDialog = userDic
-                                    expandedMenuUserDic = null
+                    Column(modifier = Modifier.padding(innerPadding)) {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(chosungButtons) { chosung ->
+                                Button(
+                                    onClick = { selectedChosung = chosung },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedChosung == chosung) MaterialTheme.colorScheme.primary else Color.Gray
+                                    )
+                                ) {
+                                    Text(text = chosung)
                                 }
-                            )
+                            }
+                        }
+                        LazyColumn {
+                            items(filteredUserDics) { userDic ->
+                                UserDicItem(
+                                    userDic = userDic,
+                                    isMenuExpanded = expandedMenuUserDic == userDic,
+                                    onLongClick = { expandedMenuUserDic = userDic },
+                                    onDismissMenu = { expandedMenuUserDic = null },
+                                    onEdit = {
+                                        showEditDialog = userDic
+                                        expandedMenuUserDic = null
+                                    },
+                                    onDelete = {
+                                        showDeleteConfirmDialog = userDic
+                                        expandedMenuUserDic = null
+                                    }
+                                )
+                            }
                         }
                     }
 
@@ -212,6 +282,7 @@ class UserDictionaryActivity : ComponentActivity() {
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
