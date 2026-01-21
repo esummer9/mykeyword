@@ -127,18 +127,18 @@ class UserDictionaryActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
                     LazyColumn(modifier = Modifier.padding(innerPadding)) {
-                        items(userDics) { userDic ->
+                        items(userDics) {
                             UserDicItem(
-                                userDic = userDic,
-                                isMenuExpanded = expandedMenuUserDic == userDic,
-                                onLongClick = { expandedMenuUserDic = userDic },
+                                userDic = it,
+                                isMenuExpanded = expandedMenuUserDic == it,
+                                onLongClick = { expandedMenuUserDic = it },
                                 onDismissMenu = { expandedMenuUserDic = null },
                                 onEdit = {
-                                    showEditDialog = userDic
+                                    showEditDialog = it
                                     expandedMenuUserDic = null
                                 },
                                 onDelete = {
-                                    showDeleteConfirmDialog = userDic
+                                    showDeleteConfirmDialog = it
                                     expandedMenuUserDic = null
                                 }
                             )
@@ -149,7 +149,8 @@ class UserDictionaryActivity : ComponentActivity() {
                         EditKeywordDialog(
                             onDismiss = { showAddDialog = false },
                             onConfirm = { keyword, pos ->
-                                if (dbHelper.addOrUpdateUserDic(0L, keyword, pos) == -1L) {
+                                val result = dbHelper.addOrUpdateUserDic(0L, keyword, pos)
+                                if (result == -1L) {
                                     Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
                                 } else {
                                     userDics = dbHelper.getAllUserDics()
@@ -165,11 +166,11 @@ class UserDictionaryActivity : ComponentActivity() {
                             userDic = userDic,
                             onDismiss = { showEditDialog = null },
                             onConfirm = { keyword, pos ->
-                                if (dbHelper.addOrUpdateUserDic(userDic.id, keyword, pos) == -1L) {
+                                val result = dbHelper.addOrUpdateUserDic(userDic.id, keyword, pos)
+                                if (result == -1L) {
                                     Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
                                 } else {
                                     userDics = dbHelper.getAllUserDics()
-
                                     WriteUserDic(context, UserDicItem(keyword, pos))
                                     showEditDialog = null
                                 }
