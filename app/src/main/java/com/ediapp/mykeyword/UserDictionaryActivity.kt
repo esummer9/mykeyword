@@ -37,10 +37,12 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,9 +51,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class UserDictionaryActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -71,12 +74,20 @@ class UserDictionaryActivity : ComponentActivity() {
 
                 val context = LocalContext.current
                 val dbHelper = remember { DatabaseHelper.getInstance(context) }
-                var userDics by remember { mutableStateOf(dbHelper.getAllUserDics()) }
+                val myApplication = context.applicationContext as MyApplication
+                var userDics by remember { mutableStateOf<List<UserDic>>(emptyList()) }
                 var showAddDialog by remember { mutableStateOf(false) }
                 var showEditDialog by remember { mutableStateOf<UserDic?>(null) }
                 var showDeleteConfirmDialog by remember { mutableStateOf<UserDic?>(null) }
                 var expandedMenuUserDic by remember { mutableStateOf<UserDic?>(null) }
                 var fabMenuExpanded by remember { mutableStateOf(false) }
+                val scope = rememberCoroutineScope()
+
+                LaunchedEffect(Unit) {
+                    userDics = withContext(Dispatchers.IO) {
+                        dbHelper.getAllUserDics()
+                    }
+                }
 
                 Scaffold(
                     topBar = {
@@ -113,13 +124,14 @@ class UserDictionaryActivity : ComponentActivity() {
                                 DropdownMenuItem(
                                     text = { Text("재생성") },
                                     onClick = {
-                                        val allDics = dbHelper.getAllUserDics()
-                                        ReWriteUserDic(context)
-                                        allDics.forEach {
-                                            WriteUserDic(context, UserDicItem(it.keyword, it.pos))
-                                        }
-                                        Toast.makeText(context, "사용자 사전을 재생성했습니다.", Toast.LENGTH_SHORT).show()
                                         fabMenuExpanded = false
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) { dbHelper.getAllUserDics() }
+                                            myApplication.morphemeAnalyzer.reloadUserDic()
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, "사용자 사전을 재생성했습니다.", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     }
                                 )
                             }
@@ -149,13 +161,19 @@ class UserDictionaryActivity : ComponentActivity() {
                         EditKeywordDialog(
                             onDismiss = { showAddDialog = false },
                             onConfirm = { keyword, pos ->
-                                if (dbHelper.addOrUpdateUserDic(0L, keyword, pos) == -1L) {
-                                    Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    userDics = dbHelper.getAllUserDics()
-                                    showAddDialog = false
+                                scope.launch {
+                                    val result = withContext(Dispatchers.IO) { dbHelper.addOrUpdateUserDic(0L, keyword, pos) }
+                                    if (result == -1L) {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        val updatedDics = withContext(Dispatchers.IO) { dbHelper.getAllUserDics() }
+                                        myApplication.morphemeAnalyzer.reloadUserDic()
+                                        userDics = updatedDics
+                                        showAddDialog = false
+                                    }
                                 }
-                                WriteUserDic(context, UserDicItem(keyword, pos))
                             }
                         )
                     }
@@ -165,13 +183,18 @@ class UserDictionaryActivity : ComponentActivity() {
                             userDic = userDic,
                             onDismiss = { showEditDialog = null },
                             onConfirm = { keyword, pos ->
-                                if (dbHelper.addOrUpdateUserDic(userDic.id, keyword, pos) == -1L) {
-                                    Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    userDics = dbHelper.getAllUserDics()
-
-                                    WriteUserDic(context, UserDicItem(keyword, pos))
-                                    showEditDialog = null
+                                scope.launch {
+                                    val result = withContext(Dispatchers.IO) { dbHelper.addOrUpdateUserDic(userDic.id, keyword, pos) }
+                                    if (result == -1L) {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        val updatedDics = withContext(Dispatchers.IO) { dbHelper.getAllUserDics() }
+                                        myApplication.morphemeAnalyzer.reloadUserDic()
+                                        userDics = updatedDics
+                                        showEditDialog = null
+                                    }
                                 }
                             }
                         )
@@ -184,9 +207,16 @@ class UserDictionaryActivity : ComponentActivity() {
                             text = { Text("'${userDic.keyword}'을(를) 삭제하시겠습니까?") },
                             confirmButton = {
                                 Button(onClick = {
-                                    dbHelper.deleteUserDic(userDic.id)
-                                    userDics = dbHelper.getAllUserDics()
-                                    showDeleteConfirmDialog = null
+                                    scope.launch {
+                                        val updatedDics = withContext(Dispatchers.IO) {
+                                            dbHelper.deleteUserDic(userDic.id)
+                                            val dics = dbHelper.getAllUserDics()
+                                            myApplication.morphemeAnalyzer.reloadUserDic()
+                                            dics
+                                        }
+                                        userDics = updatedDics
+                                        showDeleteConfirmDialog = null
+                                    }
                                 }) {
                                     Text("삭제")
                                 }
@@ -202,15 +232,6 @@ class UserDictionaryActivity : ComponentActivity() {
             }
         }
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        val myApp = applicationContext as MyApplication
-        val analyzer = myApp.morphemeAnalyzer
-        lifecycleScope.launch {
-            analyzer.initialize()
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -222,7 +243,16 @@ fun EditKeywordDialog(
 ) {
     var keyword by remember { mutableStateOf(userDic?.keyword ?: "") }
     var expanded by remember { mutableStateOf(false) }
-
+    val posDisplayMap = remember {
+        linkedMapOf(
+            "NNG" to "일반명사",
+            "NNP" to "고유명사",
+            "NNB" to "의존명사",
+            "NP" to "대명사",
+            "NR" to "수사",
+            "NA" to "불능"
+        )
+    }
     val posOptions = remember { posDisplayMap.keys.toList() }
     var selectedPos by remember { mutableStateOf(userDic?.pos ?: posOptions[0]) }
 

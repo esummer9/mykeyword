@@ -3,6 +3,7 @@ package com.ediapp.mykeyword.ui.keyword
 
 import android.content.ContentValues
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +54,7 @@ import com.ediapp.mykeyword.KeywordMemosActivity
 import com.ediapp.mykeyword.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -166,15 +168,18 @@ fun KeywordScreen() {
                 TextButton(
                     onClick = {
                         if (keywordText.isNotBlank()) {
-                            scope.launch(Dispatchers.IO) {
-                                val db = dbHelper.writableDatabase
-                                val values = ContentValues().apply {
-                                    put(DatabaseHelper.DICS_COL_KEYWORD, keywordText)
-                                    put(DatabaseHelper.DICS_COL_POS, "NNP") // Default to Proper Noun
+                            scope.launch {
+                                val result = withContext(Dispatchers.IO) {
+                                    dbHelper.addOrUpdateUserDic(0L, keywordText, "NNP") // Default to Proper Noun
                                 }
-                                db.insert(DatabaseHelper.TABLE_DICS, null, values)
+                                if (result == -1L) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    showAddUserDicDialog = null
+                                }
                             }
-                            showAddUserDicDialog = null
                         }
                     }
                 ) {
