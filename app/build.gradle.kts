@@ -50,6 +50,7 @@ android {
 dependencies {
     implementation(files("libs/kiwi-android-v0.22.1.aar"))
     implementation("com.github.shin285:KOMORAN:3.3.9")
+    implementation("com.google.code.gson:gson:2.10")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

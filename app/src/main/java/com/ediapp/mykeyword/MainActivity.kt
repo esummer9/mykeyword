@@ -262,12 +262,12 @@ fun MyKeywordApp() {
                                         )
 
                                         DropdownMenuItem(
-                                            text = { Text("오픈소스") },
+                                            text = { Text("주고/받기") },
                                             onClick = {
                                                 context.startActivity(
                                                     Intent(
                                                         context,
-                                                        OpenSourceActivity::class.java
+                                                        ExchangeActivity::class.java
                                                     )
                                                 )
                                                 menuExpanded = false

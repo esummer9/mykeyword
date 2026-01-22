@@ -1,3 +1,4 @@
+
 package com.ediapp.mykeyword
 
 import android.content.ContentValues
@@ -54,26 +55,26 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         const val MEMOS_COL_DELETED_AT = "deleted_at"
 
         private const val CREATE_TABLE_MEMOS = (
-            "CREATE TABLE " + TABLE_MEMOS + " (" +
-                "$MEMOS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "$MEMOS_COL_CATEGORY TEXT," +
-                "$MEMOS_COL_TITLE TEXT," +
-                "$MEMOS_COL_MEANING TEXT," +
-                "$MEMOS_COL_TIMESTAMP INTEGER," +
-                "$MEMOS_COL_REG_DATE INTEGER," +
-                "$MEMOS_COL_REG_DT TEXT," +
-                "$MEMOS_COL_REG_TM TEXT," +
-                "$MEMOS_COL_URL TEXT," +
-                "$MEMOS_COL_LAT REAL," +
-                "$MEMOS_COL_LON REAL," +
-                "$MEMOS_COL_ADDRESS TEXT," +
-                "$MEMOS_COL_SIDO TEXT," +
-                "$MEMOS_COL_SIGUNGU TEXT," +
-                "$MEMOS_COL_EUPMYEONDONG TEXT," +
-                "$MEMOS_COL_STATUS TEXT DEFAULT 'R'," +
-                "$MEMOS_COL_DELETED_AT INTEGER default 0 " +
-                ")"
-            )
+                "CREATE TABLE " + TABLE_MEMOS + " (" +
+                        "$MEMOS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        "$MEMOS_COL_CATEGORY TEXT," +
+                        "$MEMOS_COL_TITLE TEXT," +
+                        "$MEMOS_COL_MEANING TEXT," +
+                        "$MEMOS_COL_TIMESTAMP INTEGER," +
+                        "$MEMOS_COL_REG_DATE INTEGER," +
+                        "$MEMOS_COL_REG_DT TEXT," +
+                        "$MEMOS_COL_REG_TM TEXT," +
+                        "$MEMOS_COL_URL TEXT," +
+                        "$MEMOS_COL_LAT REAL," +
+                        "$MEMOS_COL_LON REAL," +
+                        "$MEMOS_COL_ADDRESS TEXT," +
+                        "$MEMOS_COL_SIDO TEXT," +
+                        "$MEMOS_COL_SIGUNGU TEXT," +
+                        "$MEMOS_COL_EUPMYEONDONG TEXT," +
+                        "$MEMOS_COL_STATUS TEXT DEFAULT 'R'," +
+                        "$MEMOS_COL_DELETED_AT INTEGER default 0 " +
+                        ")"
+                )
 
         // tb_KEYWORDS 테이블
         const val TABLE_KEYWORDS = "tb_keywords"
@@ -82,13 +83,13 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         const val MEMOS_COL_MYWORD_ID = "memos_id"
 
         private const val CREATE_TABLE_KEYWORDS = (
-            "CREATE TABLE " + TABLE_KEYWORDS + " (" +
-                "$KEYWORDS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "$KEYWORDS_COL_KEYWORD TEXT," +
-                "$MEMOS_COL_MYWORD_ID INTEGER," +
-                "FOREIGN KEY($MEMOS_COL_MYWORD_ID) REFERENCES $TABLE_MEMOS($MEMOS_COL_ID)" +
-                ")"
-            )
+                "CREATE TABLE " + TABLE_KEYWORDS + " (" +
+                        "$KEYWORDS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        "$KEYWORDS_COL_KEYWORD TEXT," +
+                        "$MEMOS_COL_MYWORD_ID INTEGER," +
+                        "FOREIGN KEY($MEMOS_COL_MYWORD_ID) REFERENCES $TABLE_MEMOS($MEMOS_COL_ID)" +
+                        ")"
+                )
 
         // tb_userdics 테이블
         const val TABLE_DICS = "tb_userdics"
@@ -96,12 +97,12 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         const val DICS_COL_KEYWORD = "keyword"
         const val DICS_COL_POS = "pos"
         private const val CREATE_TABLE_USERDICS = (
-            "CREATE TABLE " + TABLE_DICS + " (" +
-                "$DICS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "$DICS_COL_KEYWORD TEXT," +
-                "$DICS_COL_POS TEXT" +
-                ")"
-            )
+                "CREATE TABLE " + TABLE_DICS + " (" +
+                        "$DICS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        "$DICS_COL_KEYWORD TEXT," +
+                        "$DICS_COL_POS TEXT" +
+                        ")"
+                )
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -320,13 +321,19 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         cursor.close()
     }
 
-    fun getAllMemos(status: String?): List<Memo> {
+    fun getAllMemos(category: String?): List<Memo> {
         val memos = mutableListOf<Memo>()
         val db = readableDatabase
 
-        val selection = if (status == null) "$MEMOS_COL_DELETED_AT = 0" else "$MEMOS_COL_DELETED_AT = 0 and $MEMOS_COL_STATUS = '$status'"
+        val selection = if (category == null) {
+            "$MEMOS_COL_DELETED_AT = 0"
+        } else {
+            "$MEMOS_COL_DELETED_AT = 0 AND $MEMOS_COL_CATEGORY = ?"
+        }
+        val selectionArgs = if (category == null) null else arrayOf(category)
 
-        val cursor = db.query(TABLE_MEMOS, null, selection, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
+
+        val cursor = db.query(TABLE_MEMOS, null, selection, selectionArgs, null, null, "$MEMOS_COL_TIMESTAMP DESC")
 
         if (cursor.moveToFirst()) {
             do {
@@ -360,6 +367,40 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
                     deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
                         cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
                     )
+                )
+                memos.add(memo)
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return memos
+    }
+
+    fun getMemosByStatus(status: String): List<Memo> {
+        val memos = mutableListOf<Memo>()
+        val db = readableDatabase
+        val selection = "$MEMOS_COL_DELETED_AT = 0 AND $MEMOS_COL_STATUS = ?"
+        val cursor = db.query(TABLE_MEMOS, null, selection, arrayOf(status), null, null, null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                val memo = Memo(
+                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)),
+                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)),
+                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(cursor.getColumnIndexOrThrow(MEMOS_COL_LON)),
+                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                    eupmyeondong = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_EUPMYEONDONG)),
+                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))
                 )
                 memos.add(memo)
             } while (cursor.moveToNext())
@@ -414,7 +455,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
     fun getTrendingKeywords(limit: Int = 10): List<Keyword> {
         val keywords = mutableListOf<Keyword>()
         val db = readableDatabase
-        val query = "SELECT $KEYWORDS_COL_KEYWORD, COUNT(*) as count FROM $TABLE_KEYWORDS GROUP BY $KEYWORDS_COL_KEYWORD ORDER BY count DESC LIMIT ?"
+        val query = "SELECT $KEYWORDS_COL_KEYWORD, COUNT(*) as count FROM $TABLE_KEYWORDS GROUP BY  $KEYWORDS_COL_KEYWORD ORDER BY count DESC LIMIT ?"
         val cursor = db.rawQuery(query, arrayOf(limit.toString()))
 
         if (cursor.moveToFirst()) {
@@ -457,7 +498,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
     suspend fun reprocessKeywords() {
         withContext(Dispatchers.IO) {
-            val memos = getAllMemos("R")
+            val memos = getMemosByStatus("R")
             memos.forEach { memo ->
                 if(memo.title != null)
                     addKeywords(memo.title, memo.id)
@@ -516,4 +557,5 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         cursor.close()
         return userDics
     }
-}
+ }
+

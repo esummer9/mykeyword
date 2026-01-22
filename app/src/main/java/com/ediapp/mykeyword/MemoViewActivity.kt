@@ -122,99 +122,108 @@ fun MemoViewScreen(memoId: Long, onNavigateBack: () -> Unit) {
                 Text("로딩 중...")
             }
         } else if (memo != null) {
-            Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
+            LazyColumn(
+                modifier = Modifier.padding(padding)
             ) {
                 // 메모 제목
-                Text(
-                    text = memo!!.title ?: "",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                item {
+                    Text(
+                        text = memo!!.title ?: "",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                }
 
                 // 메모 의미/내용
                 if (!memo!!.meaning.isNullOrBlank()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "의미",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                        Text(
-                            text = memo!!.meaning ?: "",
-                            fontSize = 16.sp,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                    item {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "의미",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = memo!!.meaning ?: "",
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        Divider(modifier = Modifier.padding(horizontal = 16.dp))
                     }
-                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
 
                 // URL
                 if (!memo!!.url.isNullOrBlank()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "URL",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                        Text(
-                            text = memo!!.url ?: "",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                    item {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "URL",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = memo!!.url ?: "",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        Divider(modifier = Modifier.padding(horizontal = 16.dp))
                     }
-                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
 
                 // 위치
                 if (!memo!!.address.isNullOrBlank()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "위치",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                        Text(
-                            text = memo!!.address ?: "",
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                    item {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "위치",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = memo!!.address ?: "",
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        Divider(modifier = Modifier.padding(horizontal = 16.dp))
                     }
-                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
 
                 // 키워드 빈도수
                 if (keywordFrequencies.isNotEmpty()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    item {
                         Text(
                             text = "키워드 (빈도순)",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 12.dp)
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp)
                         )
+                    }
 
-                        LazyColumn {
-                            items(keywordFrequencies) { keywordFreq ->
-                                KeywordItem(keyword = keywordFreq.keyword, frequency = keywordFreq.frequency)
-                            }
-                        }
+                    items(keywordFrequencies) { keywordFreq ->
+                        KeywordItem(
+                            keyword = keywordFreq.keyword,
+                            frequency = keywordFreq.frequency,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
                     }
                 } else {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "추출된 키워드가 없습니다.",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
+                    item {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "추출된 키워드가 없습니다.",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                        }
                     }
                 }
             }
@@ -231,9 +240,9 @@ fun MemoViewScreen(memoId: Long, onNavigateBack: () -> Unit) {
 }
 
 @Composable
-fun KeywordItem(keyword: String, frequency: Int) {
+fun KeywordItem(keyword: String, frequency: Int, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
     ) {

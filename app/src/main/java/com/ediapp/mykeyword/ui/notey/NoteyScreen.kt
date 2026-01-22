@@ -270,7 +270,11 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                                 .combinedClickable(
-                                    onClick = { /* No action on simple click */ },
+                                    onClick = {
+                                        val intent = Intent(context, MemoViewActivity::class.java)
+                                        intent.putExtra("MEMO_ID", memo.id)
+                                        context.startActivity(intent)
+                                    },
                                     onLongClick = {
                                         if (memo.category == "notey") {
                                             expandedMemo = memo
