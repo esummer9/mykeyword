@@ -25,14 +25,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -52,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.Keyword
 import com.ediapp.mykeyword.KeywordMemosActivity
-import com.ediapp.mykeyword.MyApplication
 import com.ediapp.mykeyword.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,7 +55,7 @@ import java.util.Calendar
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun KeywordScreen() {
+fun KeywordScreen(refreshKey: Int) {
     val context = LocalContext.current
     val dbHelper = remember { DatabaseHelper.getInstance(context) }
     val scope = rememberCoroutineScope()
@@ -69,14 +63,9 @@ fun KeywordScreen() {
     var keywords by remember { mutableStateOf<List<Keyword>>(emptyList()) }
     var selectedPeriod by remember { mutableStateOf("1개월") }
     var addUserDicOriginalKeyword by remember { mutableStateOf("") }
-    var refreshKey by remember { mutableStateOf(0) }
-    var showReprocessDialog by remember { mutableStateOf(false) }
-    var isReprocessing by remember { mutableStateOf(false) }
     var keywordToDelete by remember { mutableStateOf<Keyword?>(null) }
     var expandedKeyword by remember { mutableStateOf<Keyword?>(null) } // For long press menu
     var showAddUserDicDialog by remember { mutableStateOf<Keyword?>(null) } // For dialog
-
-    val myApplication = context.applicationContext as MyApplication
 
     fun getKeywords(period: String) {
         scope.launch {
@@ -101,38 +90,6 @@ fun KeywordScreen() {
         getKeywords(selectedPeriod)
     }
 
-    if (showReprocessDialog) {
-        AlertDialog(
-            onDismissRequest = { showReprocessDialog = false },
-            title = { Text("키워드 재처리") },
-            text = { Text("메모의 형태소를 분석합니다") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showReprocessDialog = false
-                        scope.launch {
-                            isReprocessing = true
-                            myApplication.updateKomoranUserDictionary() // Update and reload user dictionary
-                            dbHelper.reprocessKeywords()
-                            kotlinx.coroutines.delay(2000)
-                            isReprocessing = false
-                            refreshKey++ // Trigger a refresh
-                        }
-                    }
-                ) {
-                    Text("확인")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showReprocessDialog = false }
-                ) {
-                    Text("취소")
-                }
-            }
-        )
-    }
-
     if (keywordToDelete != null) {
         AlertDialog(
             onDismissRequest = { keywordToDelete = null },
@@ -144,7 +101,7 @@ fun KeywordScreen() {
                         scope.launch {
                             keywordToDelete?.let { dbHelper.updateMemoStatusForKeywordAndDelete(it.keyword) }
                             keywordToDelete = null
-                            refreshKey++
+                            getKeywords(selectedPeriod)
                         }
                     }
                 ) {
@@ -161,149 +118,114 @@ fun KeywordScreen() {
         )
     }
 
-        if (showAddUserDicDialog != null) {
-            var keywordText by remember(showAddUserDicDialog) {
-                mutableStateOf(showAddUserDicDialog?.keyword ?: "")
-            }
-            AlertDialog(
-                onDismissRequest = { showAddUserDicDialog = null },
-                title = { Text("사용자 사전 추가") },
-                text = {
-                    TextField(
-                        value = keywordText,
-                        onValueChange = { keywordText = it },
-                        label = { Text("키워드") }
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            Log.d("KeywordScreen", "${addUserDicOriginalKeyword} != ${keywordText}")
-                            if(addUserDicOriginalKeyword != keywordText) {
-                                if (keywordText.isNotBlank()) {
-                                    scope.launch(Dispatchers.IO) {
-                                        val db = dbHelper.writableDatabase
-                                        val values = ContentValues().apply {
-                                            put(DatabaseHelper.DICS_COL_KEYWORD, keywordText)
-                                            put(
-                                                DatabaseHelper.DICS_COL_POS,
-                                                "NNP"
-                                            ) // Default to Proper Noun
-                                        }
-                                        db.insert(DatabaseHelper.TABLE_DICS, null, values)
+    if (showAddUserDicDialog != null) {
+        var keywordText by remember(showAddUserDicDialog) {
+            mutableStateOf(showAddUserDicDialog?.keyword ?: "")
+        }
+        AlertDialog(
+            onDismissRequest = { showAddUserDicDialog = null },
+            title = { Text("사용자 사전 추가") },
+            text = {
+                TextField(
+                    value = keywordText,
+                    onValueChange = { keywordText = it },
+                    label = { Text("키워드") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        Log.d("KeywordScreen", "${addUserDicOriginalKeyword} != ${keywordText}")
+                        if(addUserDicOriginalKeyword != keywordText) {
+                            if (keywordText.isNotBlank()) {
+                                scope.launch(Dispatchers.IO) {
+                                    val db = dbHelper.writableDatabase
+                                    val values = ContentValues().apply {
+                                        put(DatabaseHelper.DICS_COL_KEYWORD, keywordText)
+                                        put(
+                                            DatabaseHelper.DICS_COL_POS,
+                                            "NNP"
+                                        ) // Default to Proper Noun
                                     }
-                                    showAddUserDicDialog = null
+                                    db.insert(DatabaseHelper.TABLE_DICS, null, values)
                                 }
-                            } else {
                                 showAddUserDicDialog = null
                             }
+                        } else {
+                            showAddUserDicDialog = null
                         }
-                    ) {
-                        Text("저장")
                     }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showAddUserDicDialog = null }
-                    ) {
-                        Text("취소")
-                    }
+                ) {
+                    Text("저장")
                 }
-            )
-        }
-    
-        Scaffold(
-            floatingActionButton = {
-                FloatingActionButton(onClick = { showReprocessDialog = true }) {
-                    Icon(
-                        painterResource(id = R.drawable.data_extract),
-                        contentDescription = "Reprocess Keywords",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(25.dp)
-                    )
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showAddUserDicDialog = null }
+                ) {
+                    Text("취소")
                 }
             }
-        ) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        val periods = listOf("2일", "1주", "1개월", "전체")
-                        periods.forEach { period ->
-                            Button(
-                                onClick = { getKeywords(period) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (selectedPeriod == period) MaterialTheme.colorScheme.primary else Color.Gray
-                                )
-                            ) {
-                                Text(text = period)
-                            }
-                        }
-                    }
-    
-                    Spacer(modifier = Modifier.height(16.dp))
-    
-                    Text(text = "'${selectedPeriod}' 필터링")
-    
-                    LazyColumn {
-                        items(keywords) { keyword ->
-                            Box {
-                                KeywordItem(
-                                    keyword = keyword,
-                                    onItemClick = { kw ->
-                                        val intent = Intent(context, KeywordMemosActivity::class.java)
-                                        intent.putExtra("KEYWORD", kw.keyword)
-                                        context.startActivity(intent)
-                                    },
-                                    onLongClick = { kw -> expandedKeyword = kw }
-                                )
-                                DropdownMenu(
-                                    expanded = expandedKeyword == keyword,
-                                    onDismissRequest = { expandedKeyword = null }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("사용자 사전 추가") },
-                                        onClick = {
-                                            addUserDicOriginalKeyword = keyword.keyword
-                                            showAddUserDicDialog = keyword
-                                            expandedKeyword = null
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("삭제") },
-                                        onClick = {
-                                            keywordToDelete = keyword
-                                            expandedKeyword = null
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                if (isReprocessing) {
-                    ProcessingDialog(message = "키워드를 재처리하는 중입니다...")
-                }
-            }
+        )
     }
-}
 
-@Composable
-fun ProcessingDialog(message: String) {
-    AlertDialog(
-        onDismissRequest = { /* 다이얼로그 외부 클릭 시 닫히지 않도록 빈 함수 */ },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(48.dp))
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = message)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                val periods = listOf("2일", "1주", "1개월", "전체")
+                periods.forEach { period ->
+                    Button(
+                        onClick = { getKeywords(period) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedPeriod == period) MaterialTheme.colorScheme.primary else Color.Gray
+                        )
+                    ) {
+                        Text(text = period)
+                    }
+                }
             }
-        },
-        confirmButton = {} // 버튼이 없는 다이얼로그
-    )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(text = "'${selectedPeriod}' 필터링")
+
+            LazyColumn {
+                items(keywords) { keyword ->
+                    Box {
+                        KeywordItem(
+                            keyword = keyword,
+                            onItemClick = { kw ->
+                                val intent = Intent(context, KeywordMemosActivity::class.java)
+                                intent.putExtra("KEYWORD", kw.keyword)
+                                context.startActivity(intent)
+                            },
+                            onLongClick = { kw -> expandedKeyword = kw }
+                        )
+                        DropdownMenu(
+                            expanded = expandedKeyword == keyword,
+                            onDismissRequest = { expandedKeyword = null }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("사용자 사전 추가") },
+                                onClick = {
+                                    addUserDicOriginalKeyword = keyword.keyword
+                                    showAddUserDicDialog = keyword
+                                    expandedKeyword = null
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("삭제") },
+                                onClick = {
+                                    keywordToDelete = keyword
+                                    expandedKeyword = null
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

@@ -11,9 +11,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -21,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
@@ -31,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+//import androidx.compose.material3.Spacer
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -45,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -148,6 +155,45 @@ fun MyKeywordApp() {
     val dbHelper = remember { DatabaseHelper.getInstance(context) }
 
     var menuExpanded by remember { mutableStateOf(false) }
+
+    var showReprocessDialog by remember { mutableStateOf(false) }
+    var isReprocessing by remember { mutableStateOf(false) }
+    var keywordRefreshKey by remember { mutableStateOf(0) }
+    val myApplication = context.applicationContext as MyApplication
+
+    if (showReprocessDialog) {
+        AlertDialog(
+            onDismissRequest = { showReprocessDialog = false },
+            title = { Text("키워드 재처리") },
+            text = { Text("메모의 형태소를 분석합니다") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showReprocessDialog = false
+                        scope.launch {
+                            isReprocessing = true
+                            myApplication.updateKomoranUserDictionary()
+                            dbHelper.reprocessKeywords()
+                            kotlinx.coroutines.delay(2000)
+                            isReprocessing = false
+                            keywordRefreshKey++
+                        }
+                    }
+                ) {
+                    Text("확인")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showReprocessDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    if (isReprocessing) {
+        ProcessingDialog(message = "키워드를 재처리하는 중입니다...")
+    }
 
     val view = LocalView.current
     DisposableEffect(view, currentDestination) {
@@ -277,6 +323,15 @@ fun MyKeywordApp() {
                                 }
                             },
                             actions = {
+                                if (currentDestination == AppDestinations.KEYWORD) {
+                                    IconButton(onClick = { showReprocessDialog = true }) {
+                                        Icon(
+                                            painterResource(id = R.drawable.data_extract),
+                                            contentDescription = "Reprocess Keywords",
+                                            modifier = Modifier.size(25.dp)
+                                        )
+                                    }
+                                }
                                 if (currentDestination == AppDestinations.NOTEY) {
                                     IconButton(onClick = { searchVisible = !searchVisible }) {
                                         Icon(
@@ -307,7 +362,7 @@ fun MyKeywordApp() {
                             refreshTrigger = noteyRefreshTrigger,
                             searchVisible = searchVisible
                         )
-                        AppDestinations.KEYWORD -> KeywordScreen()
+                        AppDestinations.KEYWORD -> KeywordScreen(refreshKey = keywordRefreshKey)
                     }
                 }
             }
@@ -354,4 +409,23 @@ enum class AppDestinations(
     HOME("Home", R.drawable.home),
     NOTEY("Notey", R.drawable.memo),
     KEYWORD("Keyword", R.drawable.keyword),
+}
+
+@Composable
+fun ProcessingDialog(message: String) {
+    AlertDialog(
+        onDismissRequest = { /* 다이얼로그 외부 클릭 시 닫히지 않도록 빈 함수 */ },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = message)
+            }
+        },
+        confirmButton = {} // 버튼이 없는 다이얼로그
+    )
 }
