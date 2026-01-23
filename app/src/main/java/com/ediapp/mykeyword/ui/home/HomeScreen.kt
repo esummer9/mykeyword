@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,8 +80,14 @@ fun HomeScreen(
             TextField(
                 value = newMemoText,
                 onValueChange = { newMemoText = it },
-                placeholder = { Text("메모 내용 입력...") },
-                modifier = Modifier.weight(1f)
+                placeholder = { Text("빠른메모 입력...") },
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                modifier = Modifier.weight(1f),
+                colors = TextFieldDefaults.colors(
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                )
             )
             IconButton(onClick = {
                 if (newMemoText.isNotBlank()) {

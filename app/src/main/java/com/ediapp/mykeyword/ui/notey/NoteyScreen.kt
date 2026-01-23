@@ -231,9 +231,9 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 TextField(
                     value = quickMemoText,
                     onValueChange = { quickMemoText = it },
-                    placeholder = { Text("Quick memo...") },
+                    placeholder = { Text("빠른메모 입력...") },
                     modifier = Modifier.weight(1f),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(5.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
