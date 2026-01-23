@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.MemoActivity
 import com.ediapp.mykeyword.MemoViewActivity
+import com.ediapp.mykeyword.MyApplication
 import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -76,6 +77,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
     var selectedPeriod by remember { mutableStateOf("1주") }
     var quickMemoText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val myApplication = context.applicationContext as MyApplication
 
     fun refreshMemos() {
         scope.launch {
@@ -148,6 +150,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                         if (keywordText.isNotBlank()) {
                             scope.launch(Dispatchers.IO) {
                                 dbHelper.addOrUpdateUserDic(-1L, keywordText, "NNP") // Default to Proper Noun
+                                myApplication.updateKomoranUserDictionary() // Update Komoran's user dictionary file and reload
                             }
                             showAddUserDicDialog = null
                         }

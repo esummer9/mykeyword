@@ -3,6 +3,7 @@ package com.ediapp.mykeyword
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
@@ -12,6 +13,7 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 data class Keyword(val keyword: String, val count: Int)
 
@@ -225,42 +227,44 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             null, null, null
         )
 
-        if (cursor.moveToFirst()) {
-            memo = Memo(
-                id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
-                category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
-                title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
-                meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
-                timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
-                regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
-                    cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
-                ),
-                regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
-                regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
-                url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
-                lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
-                    cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
-                ),
-                lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
-                    cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
-                ),
-                address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
-                sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
-                sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
-                eupmyeondong = cursor.getString(
-                    cursor.getColumnIndexOrThrow(
-                        MEMOS_COL_EUPMYEONDONG
-                    )
-                ),
-                status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
-                deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
-                    cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
-                )
-            )
-        }
         cursor.close()
         return memo
     }
+
+    private fun Cursor.toMemo(): Memo {
+        return Memo(
+            id = getLong(getColumnIndexOrThrow(MEMOS_COL_ID)),
+            category = getString(getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+            title = getString(getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+            meaning = getString(getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+            timestamp = getLong(getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+            regDate = if (isNull(getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else getLong(
+                getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
+            ),
+            regDt = getString(getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+            regTm = getString(getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+            url = getString(getColumnIndexOrThrow(MEMOS_COL_URL)),
+            lat = if (isNull(getColumnIndexOrThrow(MEMOS_COL_LAT))) null else getDouble(
+                getColumnIndexOrThrow(MEMOS_COL_LAT)
+            ),
+            lon = if (isNull(getColumnIndexOrThrow(MEMOS_COL_LON))) null else getDouble(
+                getColumnIndexOrThrow(MEMOS_COL_LON)
+            ),
+            address = getString(getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+            sido = getString(getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+            sigungu = getString(getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+            eupmyeondong = getString(
+                getColumnIndexOrThrow(
+                    MEMOS_COL_EUPMYEONDONG
+                )
+            ),
+            status = getString(getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+            deleted_at = if (isNull(getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else getLong(
+                getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
+            )
+        )
+    }
+
 
     fun deleteMemo(id: Long) {
         val db = writableDatabase
@@ -337,37 +341,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
         if (cursor.moveToFirst()) {
             do {
-                val memo = Memo(
-                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
-                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
-                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
-                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
-                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
-                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
-                        cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
-                    ),
-                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
-                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
-                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
-                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
-                        cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
-                    ),
-                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
-                        cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
-                    ),
-                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
-                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
-                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
-                    eupmyeondong = cursor.getString(
-                        cursor.getColumnIndexOrThrow(
-                            MEMOS_COL_EUPMYEONDONG
-                        )
-                    ),
-                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
-                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
-                        cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
-                    )
-                )
+                val memo = cursor.toMemo()
                 memos.add(memo)
             } while (cursor.moveToNext())
         }
@@ -383,25 +357,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
         if (cursor.moveToFirst()) {
             do {
-                val memo = Memo(
-                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
-                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
-                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
-                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
-                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
-                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)),
-                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
-                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
-                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
-                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)),
-                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(cursor.getColumnIndexOrThrow(MEMOS_COL_LON)),
-                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
-                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
-                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
-                    eupmyeondong = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_EUPMYEONDONG)),
-                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
-                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))
-                )
+                val memo = cursor.toMemo()
                 memos.add(memo)
             } while (cursor.moveToNext())
         }
@@ -426,25 +382,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
         if (cursor.moveToFirst()) {
             do {
-                val memo = Memo(
-                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
-                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
-                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
-                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
-                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
-                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)),
-                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
-                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
-                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
-                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)),
-                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(cursor.getColumnIndexOrThrow(MEMOS_COL_LON)),
-                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
-                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
-                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
-                    eupmyeondong = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_EUPMYEONDONG)),
-                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
-                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))
-                )
+                val memo = cursor.toMemo()
                 memos.add(memo)
             } while (cursor.moveToNext())
         }
@@ -494,6 +432,57 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
     fun deleteKeyword(keyword: String) {
         val db = writableDatabase
         db.delete(TABLE_KEYWORDS, "$KEYWORDS_COL_KEYWORD = ?", arrayOf(keyword))
+    }
+
+    suspend fun updateMemoStatusForKeywordAndDelete(keyword: String) {
+        withContext(Dispatchers.IO) {
+            val db = writableDatabase
+            db.beginTransaction()
+            try {
+                // 1. Find all memo_ids for the keyword
+                val memoIds = mutableListOf<Long>()
+                val cursor = db.query(
+                    TABLE_KEYWORDS,
+                    arrayOf(MEMOS_COL_MYWORD_ID),
+                    "$KEYWORDS_COL_KEYWORD = ?",
+                    arrayOf(keyword),
+                    null,
+                    null,
+                    null
+                )
+                if (cursor.moveToFirst()) {
+                    do {
+                        memoIds.add(cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_MYWORD_ID)))
+                    } while (cursor.moveToNext())
+                }
+                cursor.close()
+
+                // 2. Update the status for each memo_id
+                if (memoIds.isNotEmpty()) {
+                    val values = ContentValues().apply {
+                        put(MEMOS_COL_STATUS, "R")
+                    }
+                    val memoIdsStr = memoIds.joinToString(",")
+                    db.update(
+                        TABLE_MEMOS,
+                        values,
+                        "$MEMOS_COL_ID IN ($memoIdsStr)",
+                        null
+                    )
+                }
+
+                // 3. Delete the keyword
+                db.delete(TABLE_KEYWORDS, "$KEYWORDS_COL_KEYWORD = ?", arrayOf(keyword))
+
+                db.setTransactionSuccessful()
+            } catch (e: Exception) {
+                Log.e("DatabaseHelper", "Error in updateMemoStatusForKeywordAndDelete", e)
+            } finally {
+                if (db.inTransaction()) {
+                    db.endTransaction()
+                }
+            }
+        }
     }
 
     suspend fun reprocessKeywords() {
@@ -557,5 +546,26 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         cursor.close()
         return userDics
     }
+
+    suspend fun writeUserDictionaryToFile(context: Context) = withContext(Dispatchers.IO) {
+        val userDics = getAllUserDics()
+        val komoranDir = File(context.filesDir, "komoran")
+        if (!komoranDir.exists()) {
+            komoranDir.mkdirs()
+        }
+        val userDicFile = File(komoranDir, "user.dict")
+
+        try {
+            userDicFile.printWriter().use { out ->
+                userDics.forEach { userDic ->
+                    out.println("${userDic.keyword}\t${userDic.pos}")
+                }
+            }
+            Log.d("DatabaseHelper", "User dictionary written to ${userDicFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error writing user dictionary to file", e)
+        }
+    }
  }
+
 
