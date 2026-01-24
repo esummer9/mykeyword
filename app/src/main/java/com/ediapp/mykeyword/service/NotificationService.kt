@@ -91,7 +91,7 @@ class NotificationService : Service() {
     }
 
     private fun handleActionDuplicateLastMemo() {
-        val lastMemo = dbHelper.getAllMemos(null).maxByOrNull { it.regDate ?: 0 }
+        val lastMemo = dbHelper.getLatestMemo("notey")
         if (lastMemo != null) {
             dbHelper.addMemo(
                 title = lastMemo.title ?: "",

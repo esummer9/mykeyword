@@ -1,9 +1,6 @@
-
 package com.ediapp.mykeyword.ui.keyword
 
-import android.content.ContentValues
 import android.content.Intent
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -16,11 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,12 +36,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.Keyword
 import com.ediapp.mykeyword.KeywordMemosActivity
-import com.ediapp.mykeyword.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,13 +54,12 @@ fun KeywordScreen(refreshKey: Int) {
 
     var keywords by remember { mutableStateOf<List<Keyword>>(emptyList()) }
     var selectedPeriod by remember { mutableStateOf("1개월") }
-    var addUserDicOriginalKeyword by remember { mutableStateOf("") }
     var keywordToDelete by remember { mutableStateOf<Keyword?>(null) }
     var expandedKeyword by remember { mutableStateOf<Keyword?>(null) } // For long press menu
     var showAddUserDicDialog by remember { mutableStateOf<Keyword?>(null) } // For dialog
 
     fun getKeywords(period: String) {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             val calendar = Calendar.getInstance()
             val endDate = calendar.timeInMillis
             when (period) {
@@ -78,11 +69,12 @@ fun KeywordScreen(refreshKey: Int) {
                 "전체" -> calendar.timeInMillis = 0
             }
             val startDate = calendar.timeInMillis
-            val newKeywords = withContext(Dispatchers.IO) {
-                dbHelper.getKeywordsByDateRange(startDate, endDate)
+            val newKeywords = dbHelper.getKeywordsByDateRange(startDate, endDate)
+
+            withContext(Dispatchers.Main) {
+                keywords = newKeywords
+                selectedPeriod = period
             }
-            keywords = newKeywords
-            selectedPeriod = period
         }
     }
 
@@ -98,9 +90,11 @@ fun KeywordScreen(refreshKey: Int) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        scope.launch {
-                            keywordToDelete?.let { dbHelper.updateMemoStatusForKeywordAndDelete(it.keyword) }
-                            keywordToDelete = null
+                        scope.launch(Dispatchers.IO) {
+                            keywordToDelete?.let { dbHelper.deleteKeyword(it.keyword) }
+                            withContext(Dispatchers.Main) {
+                                keywordToDelete = null
+                            }
                             getKeywords(selectedPeriod)
                         }
                     }
@@ -135,23 +129,20 @@ fun KeywordScreen(refreshKey: Int) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        Log.d("KeywordScreen", "${addUserDicOriginalKeyword} != ${keywordText}")
-                        if(addUserDicOriginalKeyword != keywordText) {
-                            if (keywordText.isNotBlank()) {
-                                scope.launch(Dispatchers.IO) {
-                                    val db = dbHelper.writableDatabase
-                                    val values = ContentValues().apply {
-                                        put(DatabaseHelper.DICS_COL_KEYWORD, keywordText)
-                                        put(
-                                            DatabaseHelper.DICS_COL_POS,
-                                            "NNP"
-                                        ) // Default to Proper Noun
+                        if (keywordText.isNotBlank()) {
+                            scope.launch(Dispatchers.IO) {
+                                val result = dbHelper.addOrUpdateUserDic(-1L, keywordText, "NNP")
+                                withContext(Dispatchers.Main) {
+                                    if (result == -1L) {
+                                        Toast.makeText(context, "'${keywordText}'는 이미 사전에 존재합니다.", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "'${keywordText}'를 사전에 추가했습니다.", Toast.LENGTH_SHORT).show()
+                                        scope.launch(Dispatchers.IO) {
+                                            dbHelper.writeUserDictionaryToFile(context)
+                                        }
                                     }
-                                    db.insert(DatabaseHelper.TABLE_DICS, null, values)
                                 }
-                                showAddUserDicDialog = null
                             }
-                        } else {
                             showAddUserDicDialog = null
                         }
                     }
@@ -190,7 +181,7 @@ fun KeywordScreen(refreshKey: Int) {
             Text(text = "'${selectedPeriod}' 필터링")
 
             LazyColumn {
-                items(keywords) { keyword ->
+                items(keywords, key = { it.keyword }) { keyword ->
                     Box {
                         KeywordItem(
                             keyword = keyword,
@@ -208,7 +199,6 @@ fun KeywordScreen(refreshKey: Int) {
                             DropdownMenuItem(
                                 text = { Text("사용자 사전 추가") },
                                 onClick = {
-                                    addUserDicOriginalKeyword = keyword.keyword
                                     showAddUserDicDialog = keyword
                                     expandedKeyword = null
                                 }

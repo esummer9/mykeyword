@@ -1,48 +1,20 @@
 package com.ediapp.mykeyword.ui.notey
 
 import android.app.Activity
-import android.content.ContentValues
 import android.content.Intent
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,82 +23,41 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.MemoActivity
 import com.ediapp.mykeyword.MemoViewActivity
-import com.ediapp.mykeyword.MyApplication
 import com.ediapp.mykeyword.R
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
     val context = LocalContext.current
     val dbHelper = remember { DatabaseHelper.getInstance(context) }
-    var memos: List<Memo> by remember { mutableStateOf<List<Memo>>(emptyList()) }
+    val viewModel: MemosViewModel = viewModel(factory = MemosViewModelFactory(dbHelper))
+
     var showDeleteConfirmDialog by remember { mutableStateOf<Memo?>(null) }
     var expandedMemo by remember { mutableStateOf<Memo?>(null) }
-    var showAddUserDicDialog by remember { mutableStateOf<Memo?>(null) } // For dialog
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedPeriod by remember { mutableStateOf("1주") }
+    var showAddUserDicDialog by remember { mutableStateOf<Memo?>(null) }
     var quickMemoText by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
-    val myApplication = context.applicationContext as MyApplication
 
-    fun refreshMemos() {
-        scope.launch {
-            val updatedMemos = withContext(Dispatchers.IO) {
-                dbHelper.getAllMemos(null)
-            }
-            memos = updatedMemos
-        }
-    }
+    val lazyListState = rememberLazyListState()
+    val memos by viewModel.memos.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val selectedPeriod by viewModel.selectedPeriod.collectAsState()
 
     val editMemoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            refreshMemos()
+            viewModel.refreshMemos()
         }
     }
 
-    LaunchedEffect(refreshTrigger) { // Refresh on initial launch
-        refreshMemos()
-    }
-
-    LaunchedEffect(searchVisible) {
-        if (!searchVisible) {
-//            searchQuery = ""
-        }
-    }
-
-    val filteredAndSortedMemos = remember(memos, searchQuery, selectedPeriod) {
-        val dateFilteredMemos = if (selectedPeriod == "전체") {
-            memos
-        } else {
-            val calendar = Calendar.getInstance()
-            when (selectedPeriod) {
-                "2일" -> calendar.add(Calendar.DATE, -2)
-                "1주" -> calendar.add(Calendar.WEEK_OF_YEAR, -1)
-                "1개월" -> calendar.add(Calendar.MONTH, -1)
-            }
-            val startDate = calendar.timeInMillis
-            memos.filter { it.regDate != null && it.regDate >= startDate }
-        }
-
-        val filtered = if (searchQuery.isBlank()) {
-            dateFilteredMemos
-        } else {
-            dateFilteredMemos.filter { it.title?.contains(searchQuery, ignoreCase = true) == true }
-        }
-
-        filtered.sortedByDescending { it.regDate }
+    LaunchedEffect(refreshTrigger) {
+        viewModel.refreshMemos()
     }
 
     if (showAddUserDicDialog != null) {
@@ -148,10 +79,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 TextButton(
                     onClick = {
                         if (keywordText.isNotBlank()) {
-                            scope.launch(Dispatchers.IO) {
-                                dbHelper.addOrUpdateUserDic(-1L, keywordText, "NNP") // Default to Proper Noun
-                                myApplication.updateKomoranUserDictionary() // Update Komoran's user dictionary file and reload
-                            }
+                            viewModel.addUserDic(keywordText)
                             showAddUserDicDialog = null
                         }
                     }
@@ -172,7 +100,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                val intent = Intent(context,MemoActivity::class.java)
+                val intent = Intent(context, MemoActivity::class.java)
                 intent.putExtra("MEMO_ID", -1L)
                 editMemoLauncher.launch(intent)
             }) {
@@ -190,7 +118,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 ) {
                     TextField(
                         value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        onValueChange = { viewModel.onSearchQueryChanged(it) },
                         placeholder = { Text("Search memos...") },
                         modifier = Modifier.weight(1f),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
@@ -212,7 +140,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 val periods = listOf("2일", "1주", "1개월", "전체")
                 periods.forEach { period ->
                     Button(
-                        onClick = { selectedPeriod = period },
+                        onClick = { viewModel.onPeriodChanged(period) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (selectedPeriod == period) MaterialTheme.colorScheme.primary else Color.Gray
                         )
@@ -231,9 +159,9 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 TextField(
                     value = quickMemoText,
                     onValueChange = { quickMemoText = it },
-                    placeholder = { Text("빠른메모 입력...") },
+                    placeholder = { Text("Quick memo...") },
                     modifier = Modifier.weight(1f),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(5.dp),
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
@@ -242,19 +170,8 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 )
                 IconButton(onClick = {
                     if (quickMemoText.isNotBlank()) {
-                        scope.launch {
-                            withContext(Dispatchers.IO) {
-                                dbHelper.addMemo(
-                                    title = quickMemoText,
-                                    mean = null,
-                                    url = null,
-                                    address = null,
-                                    regDate = System.currentTimeMillis()
-                                )
-                            }
-                            quickMemoText = ""
-                            refreshMemos()
-                        }
+                        viewModel.addQuickMemo(quickMemoText)
+                        quickMemoText = ""
                     }
                 }) {
                     Icon(
@@ -265,8 +182,15 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 }
             }
 
-            LazyColumn(modifier = Modifier.padding(horizontal = 16.dp)) {
-                items(filteredAndSortedMemos) { memo ->
+            LazyColumn(state = lazyListState, modifier = Modifier.padding(horizontal = 16.dp)) {
+                itemsIndexed(
+                    items = memos,
+                    key = { _, memo -> memo.id }
+                ) { index, memo ->
+                    if (index == memos.size - 1) {
+                        viewModel.loadMemos()
+                    }
+
                     Box {
                         Card(
                             modifier = Modifier
@@ -295,7 +219,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                                     Text(text = memo.title ?: "", fontWeight = FontWeight.Bold)
                                     Text(text = formatRegDate(memo.regDate))
                                 }
-                                IconButton(onClick = { 
+                                IconButton(onClick = {
                                     val intent = Intent(context, MemoActivity::class.java)
                                     intent.putExtra("MEMO_ID", memo.id)
                                     editMemoLauncher.launch(intent)
@@ -316,12 +240,7 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                             })
 
                             DropdownMenuItem(text = { Text(stringResource(id = R.string.duplicate)) }, onClick = {
-                                scope.launch {
-                                    withContext(Dispatchers.IO) {
-                                        dbHelper.duplicateMemo(memo.id)
-                                    }
-                                    refreshMemos()
-                                }
+                                viewModel.duplicateMemo(memo.id)
                                 expandedMemo = null
                             })
                             DropdownMenuItem(text = { Text(stringResource(id = R.string.delete)) }, onClick = {
@@ -351,13 +270,8 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
             confirmButton = {
                 Button(
                     onClick = {
-                        scope.launch {
-                            withContext(Dispatchers.IO) {
-                                dbHelper.deleteMemo(memo.id)
-                            }
-                            refreshMemos()
-                            showDeleteConfirmDialog = null
-                        }
+                        viewModel.deleteMemo(memo.id)
+                        showDeleteConfirmDialog = null
                     }
                 ) {
                     Text(stringResource(id = R.string.delete))

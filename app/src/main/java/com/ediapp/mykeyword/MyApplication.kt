@@ -12,8 +12,6 @@ import kotlinx.coroutines.withContext
 
 class MyApplication : Application() {
 
-    lateinit var morphemeAnalyzer: KomoranAnalyzer
-        private set
     lateinit var dbHelper: DatabaseHelper
         private set
 
@@ -21,12 +19,6 @@ class MyApplication : Application() {
         super.onCreate()
 
         dbHelper = DatabaseHelper.getInstance(this)
-
-        morphemeAnalyzer = KomoranAnalyzer(this)
-
-        CoroutineScope(Dispatchers.IO).launch {
-            morphemeAnalyzer.initialize()
-        }
 
         // Start NotificationService
         val serviceIntent = Intent(this, NotificationService::class.java)
@@ -40,7 +32,6 @@ class MyApplication : Application() {
     suspend fun updateKomoranUserDictionary() {
         withContext(Dispatchers.IO) {
             dbHelper.writeUserDictionaryToFile(applicationContext)
-            morphemeAnalyzer.reloadUserDic()
         }
     }
 }

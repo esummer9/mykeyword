@@ -36,8 +36,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ediapp.mykeyword.AppDestinations
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.Keyword
+import com.ediapp.mykeyword.KomoranAnalyzer
 import com.ediapp.mykeyword.R
 import com.ediapp.mykeyword.ui.notey.Memo
 import kotlinx.coroutines.Dispatchers
@@ -46,11 +48,12 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun HomeScreen(
-    onNavigateToNotey: () -> Unit,
+    onNavigate: (AppDestinations) -> Unit,
 ) {
     val context = LocalContext.current
     val dbHelper = remember { DatabaseHelper.getInstance(context) }
     val scope = rememberCoroutineScope()
+    val analyzer = remember { KomoranAnalyzer(context) }
 
     var newMemoText by remember { mutableStateOf("") }
     var recentMemos by remember { mutableStateOf<List<Memo>>(emptyList()) }
@@ -100,7 +103,7 @@ fun HomeScreen(
                                 address = null,
                                 regDate = System.currentTimeMillis()
                             )
-                            dbHelper.addKeywords(newMemoText, newId)
+                            dbHelper.addKeywords(analyzer, newMemoText, newId)
                         }
                         newMemoText = ""
                         refreshTrigger++
@@ -126,7 +129,7 @@ fun HomeScreen(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 recentMemos.forEach { memo ->
-                    MemoItem(memo = memo, onClick = { onNavigateToNotey() })
+                    MemoItem(memo = memo, onClick = { onNavigate(AppDestinations.NOTEY) })
                 }
             }
         }

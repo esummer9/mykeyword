@@ -63,11 +63,14 @@ fun KeywordMemosScreen(keyword: String, onNavigateBack: () -> Unit) {
 
     LaunchedEffect(keyword) {
         withContext(Dispatchers.IO) {
-            val memosFromDb = dbHelper.getAllMemos(null).filter {
-                (it.title?.contains(keyword, ignoreCase = true) == true) ||
-                (it.meaning?.contains(keyword, ignoreCase = true) == true)
-            }
-            memos = memosFromDb.sortedByDescending { it.regDate }
+            val memosFromDb = dbHelper.getMemosWithPagination(
+                category = "notey",
+                searchQuery = keyword,
+                startDate = null,
+                limit = 100, // Load first 100 items
+                offset = 0
+            )
+            memos = memosFromDb
         }
     }
 

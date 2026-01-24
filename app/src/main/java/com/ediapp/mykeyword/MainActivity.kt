@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,7 +62,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
 import com.ediapp.mykeyword.service.NotificationService
 import com.ediapp.mykeyword.ui.home.HomeScreen
 import com.ediapp.mykeyword.ui.keyword.KeywordScreen
@@ -96,18 +96,6 @@ class MainActivity : ComponentActivity() {
             MyKeywordTheme {
                 MyKeywordApp()
             }
-        }
-
-        val myApp: MyApplication = applicationContext as MyApplication
-        val analyzer = myApp.morphemeAnalyzer
-
-        // lifecycleScope를 사용하여 코루틴을 실행합니다.
-        lifecycleScope.launch {
-            val textToAnalyze = "안녕하세요, 형태소 분석 예시입니다."
-            val result = analyzer.analyzeText(textToAnalyze)
-
-            // 결과 확인 (예: ["안녕/NNG", "하/XSV", "시/EP", "어요/EF", ",/SP", "형태소/NNG", ...])
-            Log.d("MorphemeResult", result.toString())
         }
     }
 
@@ -159,7 +147,11 @@ fun MyKeywordApp() {
     var showReprocessDialog by remember { mutableStateOf(false) }
     var isReprocessing by remember { mutableStateOf(false) }
     var keywordRefreshKey by remember { mutableStateOf(0) }
-    val myApplication = context.applicationContext as MyApplication
+    val analyzer = remember { KomoranAnalyzer(context) }
+
+    LaunchedEffect(analyzer) {
+        analyzer.initialize()
+    }
 
     if (showReprocessDialog) {
         AlertDialog(
@@ -172,8 +164,9 @@ fun MyKeywordApp() {
                         showReprocessDialog = false
                         scope.launch {
                             isReprocessing = true
-                            myApplication.updateKomoranUserDictionary()
-                            dbHelper.reprocessKeywords()
+                            dbHelper.writeUserDictionaryToFile(context)
+                            analyzer.reloadUserDic()
+                            dbHelper.reprocessKeywords(analyzer)
                             kotlinx.coroutines.delay(2000)
                             isReprocessing = false
                             keywordRefreshKey++
@@ -214,13 +207,14 @@ fun MyKeywordApp() {
             onDismiss = { showAddMemoDialog = false },
             onConfirm = { memoText ->
                 scope.launch(Dispatchers.IO) {
-                    dbHelper.addMemo(
+                    val newId = dbHelper.addMemo(
                         title = memoText,
                         mean = null,
                         url = null,
                         address = null,
                         regDate = System.currentTimeMillis()
                     )
+                    dbHelper.addKeywords(analyzer, memoText, newId)
                 }
                 showAddMemoDialog = false
                 noteyRefreshTrigger++
@@ -307,18 +301,18 @@ fun MyKeywordApp() {
                                             }
                                         )
 
-                                        DropdownMenuItem(
-                                            text = { Text("주고/받기") },
-                                            onClick = {
-                                                context.startActivity(
-                                                    Intent(
-                                                        context,
-                                                        ExchangeActivity::class.java
-                                                    )
-                                                )
-                                                menuExpanded = false
-                                            }
-                                        )
+//                                        DropdownMenuItem(
+//                                            text = { Text("주고/받기") },
+//                                            onClick = {
+//                                                context.startActivity(
+//                                                    Intent(
+//                                                        context,
+//                                                        ExchangeActivity::class.java
+//                                                    )
+//                                                )
+//                                                menuExpanded = false
+//                                            }
+//                                        )
                                     }
                                 }
                             },
@@ -326,8 +320,9 @@ fun MyKeywordApp() {
                                 if (currentDestination == AppDestinations.KEYWORD) {
                                     IconButton(onClick = { showReprocessDialog = true }) {
                                         Icon(
-                                            painterResource(id = R.drawable.data_extract),
+                                            painterResource(id = R.drawable.etl_keywords),
                                             contentDescription = "Reprocess Keywords",
+                                            tint = Color.Unspecified,
                                             modifier = Modifier.size(25.dp)
                                         )
                                     }
@@ -342,10 +337,8 @@ fun MyKeywordApp() {
                                         )
                                     }
                                 }
-                                if (currentDestination != AppDestinations.HOME) {
-                                    IconButton(onClick = { showAddMemoDialog = true }) {
-                                        Icon(Icons.Default.Add, contentDescription = "Add Memo")
-                                    }
+                                IconButton(onClick = { showAddMemoDialog = true }) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add Memo")
                                 }
                             }
                         )
@@ -355,9 +348,7 @@ fun MyKeywordApp() {
             ) { scaffoldPadding ->
                 Box(modifier = Modifier.padding(scaffoldPadding)) {
                     when (currentDestination) {
-                        AppDestinations.HOME -> HomeScreen(
-                            onNavigateToNotey = { currentDestination = AppDestinations.NOTEY }
-                        )
+                        AppDestinations.HOME -> HomeScreen(onNavigate = { currentDestination = it })
                         AppDestinations.NOTEY -> NoteyScreen(
                             refreshTrigger = noteyRefreshTrigger,
                             searchVisible = searchVisible
@@ -369,6 +360,27 @@ fun MyKeywordApp() {
         }
     }
 }
+
+@Composable
+fun ProcessingDialog(message: String) {
+    AlertDialog(
+        onDismissRequest = { /* 사용자가 대화 상자를 닫을 수 없도록 함 */ },
+        title = { Text(text = "처리 중") },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = message)
+            }
+        },
+        confirmButton = {}
+    )
+}
+
 
 @Composable
 fun AddMemoDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
@@ -409,23 +421,4 @@ enum class AppDestinations(
     HOME("Home", R.drawable.home),
     NOTEY("Notey", R.drawable.memo),
     KEYWORD("Keyword", R.drawable.keyword),
-}
-
-@Composable
-fun ProcessingDialog(message: String) {
-    AlertDialog(
-        onDismissRequest = { /* 다이얼로그 외부 클릭 시 닫히지 않도록 빈 함수 */ },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(48.dp))
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = message)
-            }
-        },
-        confirmButton = {} // 버튼이 없는 다이얼로그
-    )
 }

@@ -40,10 +40,12 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,14 +55,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
 import com.ediapp.mykeyword.ui.theme.MyKeywordTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // 초성 리스트
 private val CHOSUNG = charArrayOf(
     'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
 )
+//
+//private val posDisplayMap = mapOf(
+//    "NNP" to "고유명사",
+//    "NNG" to "일반명사",
+//    "VA" to "형용사",
+//    "SL" to "외국어"
+//)
 
 // 주어진 단어의 첫 글자의 초성을 반환하는 함수
 private fun getChosung(word: String): Char? {
@@ -94,7 +104,8 @@ class UserDictionaryActivity : ComponentActivity() {
 
                 val context = LocalContext.current
                 val dbHelper = remember { DatabaseHelper.getInstance(context) }
-                var userDics by remember { mutableStateOf(dbHelper.getAllUserDics()) }
+                val scope = rememberCoroutineScope()
+                var userDics by remember { mutableStateOf(emptyList<UserDic>()) }
                 var showAddDialog by remember { mutableStateOf(false) }
                 var showEditDialog by remember { mutableStateOf<UserDic?>(null) }
                 var showDeleteConfirmDialog by remember { mutableStateOf<UserDic?>(null) }
@@ -104,7 +115,7 @@ class UserDictionaryActivity : ComponentActivity() {
                 // 필터링 UI 관련 상태
                 var selectedChosung by remember { mutableStateOf("전체") }
                 val chosungButtons = remember {
-                    listOf("전체", "ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ")
+                    listOf("전체", "ㄱ", "ㄴ", "ㄷ", 'ㄹ', "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ")
                 }
                 val chosungMap = remember {
                     mapOf(
@@ -116,11 +127,24 @@ class UserDictionaryActivity : ComponentActivity() {
                     )
                 }
 
+                fun refreshUserDics() {
+                    scope.launch(Dispatchers.IO) {
+                        val updatedDics = dbHelper.getAllUserDics()
+                        withContext(Dispatchers.Main) {
+                            userDics = updatedDics
+                        }
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    refreshUserDics()
+                }
+
                 val filteredUserDics = remember(userDics, selectedChosung) {
                     if (selectedChosung == "전체") {
                         userDics
                     } else {
-                        val selectedChar = selectedChosung[0]
+                        val selectedChar = selectedChosung.first()
                         val targetChars = chosungMap[selectedChar] ?: listOf(selectedChar)
                         userDics.filter {
                             val chosung = getChosung(it.keyword)
@@ -164,12 +188,12 @@ class UserDictionaryActivity : ComponentActivity() {
                                 DropdownMenuItem(
                                     text = { Text("재생성") },
                                     onClick = {
-                                        val allDics = dbHelper.getAllUserDics()
-                                        ReWriteUserDic(context)
-                                        allDics.forEach {
-                                            WriteUserDic(context, UserDicItem(it.keyword, it.pos))
+                                        scope.launch {
+                                            dbHelper.writeUserDictionaryToFile(context)
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, "사용자 사전을 재생성했습니다.", Toast.LENGTH_SHORT).show()
+                                            }
                                         }
-                                        Toast.makeText(context, "사용자 사전을 재생성했습니다.", Toast.LENGTH_SHORT).show()
                                         fabMenuExpanded = false
                                     }
                                 )
@@ -186,17 +210,17 @@ class UserDictionaryActivity : ComponentActivity() {
                         ) {
                             items(chosungButtons) { chosung ->
                                 Button(
-                                    onClick = { selectedChosung = chosung },
+                                    onClick = { selectedChosung = chosung.toString() },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (selectedChosung == chosung) MaterialTheme.colorScheme.primary else Color.Gray
+                                        containerColor = if (selectedChosung == chosung.toString()) MaterialTheme.colorScheme.primary else Color.Gray
                                     )
                                 ) {
-                                    Text(text = chosung)
+                                    Text(text = chosung.toString())
                                 }
                             }
                         }
                         LazyColumn {
-                            items(filteredUserDics) { userDic ->
+                            items(filteredUserDics, key = { it.id }) { userDic ->
                                 UserDicItem(
                                     userDic = userDic,
                                     isMenuExpanded = expandedMenuUserDic == userDic,
@@ -219,13 +243,19 @@ class UserDictionaryActivity : ComponentActivity() {
                         EditKeywordDialog(
                             onDismiss = { showAddDialog = false },
                             onConfirm = { keyword, pos ->
-                                if (dbHelper.addOrUpdateUserDic(0L, keyword, pos) == -1L) {
-                                    Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    userDics = dbHelper.getAllUserDics()
-                                    showAddDialog = false
+                                scope.launch(Dispatchers.IO) {
+                                    if (dbHelper.addOrUpdateUserDic(0L, keyword, pos) == -1L) {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        dbHelper.writeUserDictionaryToFile(context)
+                                        withContext(Dispatchers.Main) {
+                                            refreshUserDics()
+                                            showAddDialog = false
+                                        }
+                                    }
                                 }
-                                WriteUserDic(context, UserDicItem(keyword, pos))
                             }
                         )
                     }
@@ -235,13 +265,18 @@ class UserDictionaryActivity : ComponentActivity() {
                             userDic = userDic,
                             onDismiss = { showEditDialog = null },
                             onConfirm = { keyword, pos ->
-                                if (dbHelper.addOrUpdateUserDic(userDic.id, keyword, pos) == -1L) {
-                                    Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    userDics = dbHelper.getAllUserDics()
-
-                                    WriteUserDic(context, UserDicItem(keyword, pos))
-                                    showEditDialog = null
+                                scope.launch(Dispatchers.IO) {
+                                    if (dbHelper.addOrUpdateUserDic(userDic.id, keyword, pos) == -1L) {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "이미 존재하는 키워드입니다.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        dbHelper.writeUserDictionaryToFile(context)
+                                        withContext(Dispatchers.Main) {
+                                            refreshUserDics()
+                                            showEditDialog = null
+                                        }
+                                    }
                                 }
                             }
                         )
@@ -254,9 +289,14 @@ class UserDictionaryActivity : ComponentActivity() {
                             text = { Text("'${userDic.keyword}'을(를) 삭제하시겠습니까?") },
                             confirmButton = {
                                 Button(onClick = {
-                                    dbHelper.deleteUserDic(userDic.id)
-                                    userDics = dbHelper.getAllUserDics()
-                                    showDeleteConfirmDialog = null
+                                    scope.launch(Dispatchers.IO) {
+                                        dbHelper.deleteUserDic(userDic.id)
+                                        dbHelper.writeUserDictionaryToFile(context)
+                                        withContext(Dispatchers.Main) {
+                                            refreshUserDics()
+                                            showDeleteConfirmDialog = null
+                                        }
+                                    }
                                 }) {
                                     Text("삭제")
                                 }
@@ -272,21 +312,49 @@ class UserDictionaryActivity : ComponentActivity() {
             }
         }
     }
+}
 
-    override fun onDestroy() {
-        super.onDestroy()
-        val myApp = applicationContext as MyApplication
-        val analyzer = myApp.morphemeAnalyzer
-        lifecycleScope.launch {
-            analyzer.initialize()
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun UserDicItem(
+    userDic: UserDic,
+    isMenuExpanded: Boolean,
+    onLongClick: () -> Unit,
+    onDismissMenu: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Box {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp, horizontal = 8.dp)
+                .combinedClickable(
+                    onClick = { /* No action on simple click */ },
+                    onLongClick = onLongClick
+                )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = userDic.keyword, modifier = Modifier.weight(1f))
+                Text(text = posDisplayMap[userDic.pos] ?: userDic.pos)
+            }
+        }
+        DropdownMenu(
+            expanded = isMenuExpanded,
+            onDismissRequest = onDismissMenu
+        ) {
+            DropdownMenuItem(text = { Text("수정") }, onClick = onEdit)
+            DropdownMenuItem(text = { Text("삭제") }, onClick = onDelete)
         }
     }
 }
 
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditKeywordDialog(
+@Composable fun EditKeywordDialog(
     userDic: UserDic? = null,
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
@@ -320,7 +388,10 @@ fun EditKeywordDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier.menuAnchor()
                     )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
                         posOptions.forEach { pos ->
                             DropdownMenuItem(
                                 text = { Text(posDisplayMap[pos] ?: pos) },
@@ -335,8 +406,12 @@ fun EditKeywordDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(keyword, selectedPos) }) {
-                Text(if (userDic == null) "추가" else "수정")
+            Button(onClick = {
+                if (keyword.isNotBlank()) {
+                    onConfirm(keyword, selectedPos)
+                }
+            }) {
+                Text("확인")
             }
         },
         dismissButton = {
@@ -345,59 +420,4 @@ fun EditKeywordDialog(
             }
         }
     )
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun UserDicItem(
-    userDic: UserDic,
-    isMenuExpanded: Boolean,
-    onLongClick: () -> Unit,
-    onDismissMenu: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val posDisplayMap = remember {
-        linkedMapOf(
-            "NNG" to "일반명사",
-            "NNP" to "고유명사",
-            "NNB" to "의존명사",
-            "NP" to "대명사",
-            "NR" to "수사",
-            "NA" to "불능"
-        )
-    }
-    Box {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp, horizontal = 8.dp)
-                .combinedClickable(
-                    onClick = { },
-                    onLongClick = onLongClick
-                )
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-            ) {
-                Text(text = userDic.keyword, modifier = Modifier.weight(1f))
-                Text(text = posDisplayMap[userDic.pos] ?: userDic.pos)
-            }
-        }
-        DropdownMenu(
-            expanded = isMenuExpanded,
-            onDismissRequest = onDismissMenu
-        ) {
-            DropdownMenuItem(
-                text = { Text("수정") },
-                onClick = onEdit
-            )
-            DropdownMenuItem(
-                text = { Text("삭제") },
-                onClick = onDelete
-            )
-        }
-    }
 }

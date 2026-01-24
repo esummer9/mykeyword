@@ -1,19 +1,17 @@
-
 package com.ediapp.mykeyword
 
 import android.content.ContentValues
 import android.content.Context
-import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
 import com.ediapp.mykeyword.ui.notey.Memo
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 
 data class Keyword(val keyword: String, val count: Int)
 
@@ -23,7 +21,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
     companion object {
         private const val DATABASE_NAME = "memos3.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2
 
         @Volatile
         private var INSTANCE: DatabaseHelper? = null
@@ -57,26 +55,26 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         const val MEMOS_COL_DELETED_AT = "deleted_at"
 
         private const val CREATE_TABLE_MEMOS = (
-                "CREATE TABLE " + TABLE_MEMOS + " (" +
-                        "$MEMOS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
-                        "$MEMOS_COL_CATEGORY TEXT," +
-                        "$MEMOS_COL_TITLE TEXT," +
-                        "$MEMOS_COL_MEANING TEXT," +
-                        "$MEMOS_COL_TIMESTAMP INTEGER," +
-                        "$MEMOS_COL_REG_DATE INTEGER," +
-                        "$MEMOS_COL_REG_DT TEXT," +
-                        "$MEMOS_COL_REG_TM TEXT," +
-                        "$MEMOS_COL_URL TEXT," +
-                        "$MEMOS_COL_LAT REAL," +
-                        "$MEMOS_COL_LON REAL," +
-                        "$MEMOS_COL_ADDRESS TEXT," +
-                        "$MEMOS_COL_SIDO TEXT," +
-                        "$MEMOS_COL_SIGUNGU TEXT," +
-                        "$MEMOS_COL_EUPMYEONDONG TEXT," +
-                        "$MEMOS_COL_STATUS TEXT DEFAULT 'R'," +
-                        "$MEMOS_COL_DELETED_AT INTEGER default 0 " +
-                        ")"
-                )
+            "CREATE TABLE " + TABLE_MEMOS + " (" +
+                "$MEMOS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "$MEMOS_COL_CATEGORY TEXT," +
+                "$MEMOS_COL_TITLE TEXT," +
+                "$MEMOS_COL_MEANING TEXT," +
+                "$MEMOS_COL_TIMESTAMP INTEGER," +
+                "$MEMOS_COL_REG_DATE INTEGER," +
+                "$MEMOS_COL_REG_DT TEXT," +
+                "$MEMOS_COL_REG_TM TEXT," +
+                "$MEMOS_COL_URL TEXT," +
+                "$MEMOS_COL_LAT REAL," +
+                "$MEMOS_COL_LON REAL," +
+                "$MEMOS_COL_ADDRESS TEXT," +
+                "$MEMOS_COL_SIDO TEXT," +
+                "$MEMOS_COL_SIGUNGU TEXT," +
+                "$MEMOS_COL_EUPMYEONDONG TEXT," +
+                "$MEMOS_COL_STATUS TEXT DEFAULT 'R'," +
+                "$MEMOS_COL_DELETED_AT INTEGER default 0 " +
+                ")"
+            )
 
         // tb_KEYWORDS 테이블
         const val TABLE_KEYWORDS = "tb_keywords"
@@ -85,13 +83,13 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         const val MEMOS_COL_MYWORD_ID = "memos_id"
 
         private const val CREATE_TABLE_KEYWORDS = (
-                "CREATE TABLE " + TABLE_KEYWORDS + " (" +
-                        "$KEYWORDS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
-                        "$KEYWORDS_COL_KEYWORD TEXT," +
-                        "$MEMOS_COL_MYWORD_ID INTEGER," +
-                        "FOREIGN KEY($MEMOS_COL_MYWORD_ID) REFERENCES $TABLE_MEMOS($MEMOS_COL_ID)" +
-                        ")"
-                )
+            "CREATE TABLE " + TABLE_KEYWORDS + " (" +
+                "$KEYWORDS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "$KEYWORDS_COL_KEYWORD TEXT," +
+                "$MEMOS_COL_MYWORD_ID INTEGER," +
+                "FOREIGN KEY($MEMOS_COL_MYWORD_ID) REFERENCES $TABLE_MEMOS($MEMOS_COL_ID)" +
+                ")"
+            )
 
         // tb_userdics 테이블
         const val TABLE_DICS = "tb_userdics"
@@ -99,18 +97,22 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         const val DICS_COL_KEYWORD = "keyword"
         const val DICS_COL_POS = "pos"
         private const val CREATE_TABLE_USERDICS = (
-                "CREATE TABLE " + TABLE_DICS + " (" +
-                        "$DICS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
-                        "$DICS_COL_KEYWORD TEXT," +
-                        "$DICS_COL_POS TEXT" +
-                        ")"
-                )
+            "CREATE TABLE " + TABLE_DICS + " (" +
+                "$DICS_COL_ID INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "$DICS_COL_KEYWORD TEXT," +
+                "$DICS_COL_POS TEXT" +
+                ")"
+            )
+
+        private const val CREATE_INDEX_MEMOS_1 = "CREATE INDEX idx_memos_query ON $TABLE_MEMOS($MEMOS_COL_CATEGORY, $MEMOS_COL_DELETED_AT, $MEMOS_COL_REG_DATE, $MEMOS_COL_TIMESTAMP);"
+
     }
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(CREATE_TABLE_MEMOS)
         db.execSQL(CREATE_TABLE_KEYWORDS)
         db.execSQL(CREATE_TABLE_USERDICS)
+        db.execSQL(CREATE_INDEX_MEMOS_1)
 
         // Insert initial data
         val now = System.currentTimeMillis()
@@ -130,7 +132,9 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-
+        if (oldVersion < 2) {
+            db.execSQL(CREATE_INDEX_MEMOS_1)
+        }
     }
 
     fun addMemo(title: String, mean: String?, address: String?, url: String?, regDate: Long): Long {
@@ -154,11 +158,9 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         return db.insert(TABLE_MEMOS, null, values)
     }
 
-    suspend fun addKeywords(title: String, memoId: Long) {
+    suspend fun addKeywords(analyzer: KomoranAnalyzer, title: String, memoId: Long) {
         withContext(Dispatchers.IO) {
             if (memoId != -1L) {
-                val myApp = context.applicationContext as MyApplication
-                val analyzer = myApp.morphemeAnalyzer
                 val keywords = analyzer.analyzeText(title).filter {
                     val pos = it.substringAfterLast('/', "")
                     pos == "NNG" || pos == "NNP" || pos == "NA"
@@ -170,6 +172,8 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
                 db.beginTransaction()
                 try {
                     db.delete(TABLE_KEYWORDS, "$MEMOS_COL_MYWORD_ID = ?", arrayOf(memoId.toString()))
+
+                    Log.d("DatabaseHelper", "keywords: $keywords")
 
                     keywords.forEach { keyword ->
                         val keywordValues = ContentValues().apply {
@@ -227,44 +231,165 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             null, null, null
         )
 
+        if (cursor.moveToFirst()) {
+            memo = Memo(
+                id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
+                ),
+                regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+                url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
+                ),
+                lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
+                ),
+                address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                eupmyeondong = cursor.getString(
+                    cursor.getColumnIndexOrThrow(
+                        MEMOS_COL_EUPMYEONDONG
+                    )
+                ),
+                status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
+                )
+            )
+        }
         cursor.close()
         return memo
     }
 
-    private fun Cursor.toMemo(): Memo {
-        return Memo(
-            id = getLong(getColumnIndexOrThrow(MEMOS_COL_ID)),
-            category = getString(getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
-            title = getString(getColumnIndexOrThrow(MEMOS_COL_TITLE)),
-            meaning = getString(getColumnIndexOrThrow(MEMOS_COL_MEANING)),
-            timestamp = getLong(getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
-            regDate = if (isNull(getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else getLong(
-                getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
-            ),
-            regDt = getString(getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
-            regTm = getString(getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
-            url = getString(getColumnIndexOrThrow(MEMOS_COL_URL)),
-            lat = if (isNull(getColumnIndexOrThrow(MEMOS_COL_LAT))) null else getDouble(
-                getColumnIndexOrThrow(MEMOS_COL_LAT)
-            ),
-            lon = if (isNull(getColumnIndexOrThrow(MEMOS_COL_LON))) null else getDouble(
-                getColumnIndexOrThrow(MEMOS_COL_LON)
-            ),
-            address = getString(getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
-            sido = getString(getColumnIndexOrThrow(MEMOS_COL_SIDO)),
-            sigungu = getString(getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
-            eupmyeondong = getString(
-                getColumnIndexOrThrow(
-                    MEMOS_COL_EUPMYEONDONG
-                )
-            ),
-            status = getString(getColumnIndexOrThrow(MEMOS_COL_STATUS)),
-            deleted_at = if (isNull(getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else getLong(
-                getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
-            )
+    fun getRecentMemos(limit: Int): List<Memo> {
+        val memos = mutableListOf<Memo>()
+        val db = readableDatabase
+
+        val selection = "$MEMOS_COL_DELETED_AT = 0"
+        val cursor = db.query(
+            TABLE_MEMOS,
+            null,
+            selection,
+            null,
+            null,
+            null,
+            "$MEMOS_COL_TIMESTAMP DESC",
+            limit.toString()
         )
+
+        if (cursor.moveToFirst()) {
+            do {
+                val memo = Memo(
+                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
+                    ),
+                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
+                    ),
+                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
+                    ),
+                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                    eupmyeondong = cursor.getString(
+                        cursor.getColumnIndexOrThrow(
+                            MEMOS_COL_EUPMYEONDONG
+                        )
+                    ),
+                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
+                    )
+                )
+                memos.add(memo)
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return memos
     }
 
+    fun getTrendingKeywords(limit: Int): List<Keyword> {
+        val keywords = mutableListOf<Keyword>()
+        val db = readableDatabase
+        val query = "SELECT ${KEYWORDS_COL_KEYWORD}, COUNT(*) as count FROM ${TABLE_KEYWORDS} " +
+                "GROUP BY ${KEYWORDS_COL_KEYWORD} ORDER BY count DESC LIMIT ?"
+
+        val cursor = db.rawQuery(query, arrayOf(limit.toString()))
+
+        if (cursor.moveToFirst()) {
+            do {
+                val keyword = cursor.getString(cursor.getColumnIndexOrThrow(KEYWORDS_COL_KEYWORD))
+                val count = cursor.getInt(cursor.getColumnIndexOrThrow("count"))
+                keywords.add(Keyword(keyword, count))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return keywords
+    }
+
+    fun getLatestMemo(category: String): Memo? {
+        val db = readableDatabase
+        var memo: Memo? = null
+        val cursor = db.query(
+            TABLE_MEMOS,
+            null, // 모든 컬럼
+            "$MEMOS_COL_CATEGORY = ?",
+            arrayOf(category),
+            null, null,  "$MEMOS_COL_TIMESTAMP DESC", "1"
+        )
+
+        if (cursor.moveToFirst()) {
+            memo = Memo(
+                id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
+                ),
+                regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+                url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
+                ),
+                lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
+                ),
+                address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                eupmyeondong = cursor.getString(
+                    cursor.getColumnIndexOrThrow(
+                        MEMOS_COL_EUPMYEONDONG
+                    )
+                ),
+                status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
+                    cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
+                )
+            )
+        }
+        cursor.close()
+        return memo
+    }
 
     fun deleteMemo(id: Long) {
         val db = writableDatabase
@@ -276,17 +401,11 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             }
             db.update(TABLE_MEMOS, values, "$MEMOS_COL_ID = ?", arrayOf(id.toString()))
 
-            // 키워드도 함께 삭제
-            deleteKeywordsForMemo(db, id)
-
+            db.delete(TABLE_KEYWORDS, "$MEMOS_COL_MYWORD_ID = ?", arrayOf(id.toString()))
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
         }
-    }
-
-    private fun deleteKeywordsForMemo(db: SQLiteDatabase, memoId: Long) {
-        db.delete(TABLE_KEYWORDS, "$MEMOS_COL_MYWORD_ID = ?", arrayOf(memoId.toString()))
     }
 
     fun duplicateMemo(id: Long) {
@@ -319,94 +438,138 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             values.put(MEMOS_COL_REG_DT, sdfDate.format(date))
             values.put(MEMOS_COL_REG_TM, sdfTime.format(date))
             values.put(MEMOS_COL_DELETED_AT, 0)
+            values.put(MEMOS_COL_STATUS, "R")
 
             db.insert(TABLE_MEMOS, null, values)
         }
         cursor.close()
     }
 
-    fun getAllMemos(category: String?): List<Memo> {
+    fun getAllMemos(status: String?): List<Memo> {
         val memos = mutableListOf<Memo>()
         val db = readableDatabase
 
-        val selection = if (category == null) {
-            "$MEMOS_COL_DELETED_AT = 0"
-        } else {
-            "$MEMOS_COL_DELETED_AT = 0 AND $MEMOS_COL_CATEGORY = ?"
-        }
-        val selectionArgs = if (category == null) null else arrayOf(category)
+        val selection = if (status == null) "$MEMOS_COL_DELETED_AT = 0" else "$MEMOS_COL_DELETED_AT = 0 and $MEMOS_COL_STATUS = '$status'"
 
-
-        val cursor = db.query(TABLE_MEMOS, null, selection, selectionArgs, null, null, "$MEMOS_COL_TIMESTAMP DESC")
+        val cursor = db.query(TABLE_MEMOS, null, selection, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
 
         if (cursor.moveToFirst()) {
             do {
-                val memo = cursor.toMemo()
+                val memo = Memo(
+                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
+                    ),
+                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
+                    ),
+                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
+                    ),
+                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                    eupmyeondong = cursor.getString(
+                        cursor.getColumnIndexOrThrow(
+                            MEMOS_COL_EUPMYEONDONG
+                        )
+                    ),
+                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
+                    )
+                )
                 memos.add(memo)
             } while (cursor.moveToNext())
         }
         cursor.close()
         return memos
     }
-
-    fun getMemosByStatus(status: String): List<Memo> {
+    fun getMemosWithPagination(
+        category: String,
+        searchQuery: String?,
+        startDate: Long?,
+        limit: Int,
+        offset: Int
+    ): List<Memo> {
         val memos = mutableListOf<Memo>()
         val db = readableDatabase
-        val selection = "$MEMOS_COL_DELETED_AT = 0 AND $MEMOS_COL_STATUS = ?"
-        val cursor = db.query(TABLE_MEMOS, null, selection, arrayOf(status), null, null, null)
 
-        if (cursor.moveToFirst()) {
-            do {
-                val memo = cursor.toMemo()
-                memos.add(memo)
-            } while (cursor.moveToNext())
+        val selectionClauses = mutableListOf<String>()
+        val selectionArgs = mutableListOf<String>()
+
+        selectionClauses.add("$MEMOS_COL_DELETED_AT = 0")
+        selectionClauses.add("$MEMOS_COL_CATEGORY = ?")
+        selectionArgs.add(category)
+
+        searchQuery?.let {
+            selectionClauses.add("$MEMOS_COL_TITLE LIKE ?")
+            selectionArgs.add("%$it%")
         }
-        cursor.close()
-        return memos
-    }
 
-    fun getRecentMemos(limit: Int = 3): List<Memo> {
-        val memos = mutableListOf<Memo>()
-        val db = readableDatabase
-        val selection = "$MEMOS_COL_DELETED_AT = 0"
+        startDate?.let {
+            selectionClauses.add("$MEMOS_COL_REG_DATE >= ?")
+            selectionArgs.add(it.toString())
+        }
+
+        val selection = selectionClauses.joinToString(separator = " AND ")
         val cursor = db.query(
             TABLE_MEMOS,
             null,
             selection,
+            selectionArgs.toTypedArray(),
             null,
             null,
-            null,
-            "$MEMOS_COL_ID DESC",
-            limit.toString()
+            "$MEMOS_COL_TIMESTAMP DESC",
+            "$limit OFFSET $offset"
         )
 
         if (cursor.moveToFirst()) {
             do {
-                val memo = cursor.toMemo()
+                val memo = Memo(
+                    id = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_ID)),
+                    category = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_CATEGORY)),
+                    title = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_TITLE)),
+                    meaning = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_MEANING)),
+                    timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_TIMESTAMP)),
+                    regDate = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE))) null else cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DATE)
+                    ),
+                    regDt = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_DT)),
+                    regTm = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_REG_TM)),
+                    url = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_URL)),
+                    lat = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LAT))) null else cursor.getDouble(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_LAT)
+                    ),
+                    lon = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_LON))) null else cursor.getDouble(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_LON)
+                    ),
+                    address = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_ADDRESS)),
+                    sido = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIDO)),
+                    sigungu = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_SIGUNGU)),
+                    eupmyeondong = cursor.getString(
+                        cursor.getColumnIndexOrThrow(
+                            MEMOS_COL_EUPMYEONDONG
+                        )
+                    ),
+                    status = cursor.getString(cursor.getColumnIndexOrThrow(MEMOS_COL_STATUS)),
+                    deleted_at = if (cursor.isNull(cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT))) null else cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MEMOS_COL_DELETED_AT)
+                    )
+                )
                 memos.add(memo)
             } while (cursor.moveToNext())
         }
         cursor.close()
         return memos
     }
-
-    fun getTrendingKeywords(limit: Int = 10): List<Keyword> {
-        val keywords = mutableListOf<Keyword>()
-        val db = readableDatabase
-        val query = "SELECT $KEYWORDS_COL_KEYWORD, COUNT(*) as count FROM $TABLE_KEYWORDS GROUP BY  $KEYWORDS_COL_KEYWORD ORDER BY count DESC LIMIT ?"
-        val cursor = db.rawQuery(query, arrayOf(limit.toString()))
-
-        if (cursor.moveToFirst()) {
-            do {
-                val keyword = cursor.getString(cursor.getColumnIndexOrThrow(KEYWORDS_COL_KEYWORD))
-                val count = cursor.getInt(cursor.getColumnIndexOrThrow("count"))
-                keywords.add(Keyword(keyword, count))
-            } while (cursor.moveToNext())
-        }
-        cursor.close()
-        return keywords
-    }
-
 
     fun getKeywordsByDateRange(startDate: Long, endDate: Long): List<Keyword> {
         val keywords = mutableListOf<Keyword>()
@@ -431,66 +594,55 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
     fun deleteKeyword(keyword: String) {
         val db = writableDatabase
-        db.delete(TABLE_KEYWORDS, "$KEYWORDS_COL_KEYWORD = ?", arrayOf(keyword))
-    }
+        db.beginTransaction()
+        try {
+            // 1. Find all memo IDs associated with this keyword
+            val memoIds = mutableListOf<String>()
+            val cursor = db.query(
+                TABLE_KEYWORDS,
+                arrayOf(MEMOS_COL_MYWORD_ID),
+                "$KEYWORDS_COL_KEYWORD = ?",
+                arrayOf(keyword),
+                null, null, null
+            )
+            if (cursor.moveToFirst()) {
+                do {
+                    memoIds.add(cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_MYWORD_ID)).toString())
+                } while (cursor.moveToNext())
+            }
+            cursor.close()
 
-    suspend fun updateMemoStatusForKeywordAndDelete(keyword: String) {
-        withContext(Dispatchers.IO) {
-            val db = writableDatabase
-            db.beginTransaction()
-            try {
-                // 1. Find all memo_ids for the keyword
-                val memoIds = mutableListOf<Long>()
-                val cursor = db.query(
-                    TABLE_KEYWORDS,
-                    arrayOf(MEMOS_COL_MYWORD_ID),
-                    "$KEYWORDS_COL_KEYWORD = ?",
-                    arrayOf(keyword),
-                    null,
-                    null,
-                    null
-                )
-                if (cursor.moveToFirst()) {
-                    do {
-                        memoIds.add(cursor.getLong(cursor.getColumnIndexOrThrow(MEMOS_COL_MYWORD_ID)))
-                    } while (cursor.moveToNext())
+            // 2. Delete the keyword from the keywords table
+            db.delete(TABLE_KEYWORDS, "$KEYWORDS_COL_KEYWORD = ?", arrayOf(keyword))
+
+            // 3. Update the status of the affected memos to 'R'
+            if (memoIds.isNotEmpty()) {
+                val values = ContentValues().apply {
+                    put(MEMOS_COL_STATUS, "R")
                 }
-                cursor.close()
+                val whereClause = "$MEMOS_COL_ID IN (${memoIds.joinToString(separator = ",")})"
 
-                // 2. Update the status for each memo_id
-                if (memoIds.isNotEmpty()) {
-                    val values = ContentValues().apply {
-                        put(MEMOS_COL_STATUS, "R")
-                    }
-                    val memoIdsStr = memoIds.joinToString(",")
-                    db.update(
-                        TABLE_MEMOS,
-                        values,
-                        "$MEMOS_COL_ID IN ($memoIdsStr)",
-                        null
-                    )
-                }
+                Log.d("DatabaseHelper", "whereClause: $whereClause")
 
-                // 3. Delete the keyword
-                db.delete(TABLE_KEYWORDS, "$KEYWORDS_COL_KEYWORD = ?", arrayOf(keyword))
+                db.update(TABLE_MEMOS, values, whereClause, null)
+            }
 
-                db.setTransactionSuccessful()
-            } catch (e: Exception) {
-                Log.e("DatabaseHelper", "Error in updateMemoStatusForKeywordAndDelete", e)
-            } finally {
-                if (db.inTransaction()) {
-                    db.endTransaction()
-                }
+            db.setTransactionSuccessful()
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error in deleteKeyword transaction", e)
+        } finally {
+            if (db.inTransaction()) {
+                db.endTransaction()
             }
         }
     }
 
-    suspend fun reprocessKeywords() {
+    suspend fun reprocessKeywords(analyzer: KomoranAnalyzer) {
         withContext(Dispatchers.IO) {
-            val memos = getMemosByStatus("R")
+            val memos = getAllMemos("R")
             memos.forEach { memo ->
                 if(memo.title != null)
-                    addKeywords(memo.title, memo.id)
+                    addKeywords(analyzer, memo.title, memo.id)
             }
         }
     }
@@ -567,5 +719,3 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         }
     }
  }
-
-
