@@ -301,18 +301,18 @@ fun MyKeywordApp() {
                                             }
                                         )
 
-//                                        DropdownMenuItem(
-//                                            text = { Text("주고/받기") },
-//                                            onClick = {
-//                                                context.startActivity(
-//                                                    Intent(
-//                                                        context,
-//                                                        ExchangeActivity::class.java
-//                                                    )
-//                                                )
-//                                                menuExpanded = false
-//                                            }
-//                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("주고/받기") },
+                                            onClick = {
+                                                context.startActivity(
+                                                    Intent(
+                                                        context,
+                                                        ExchangeActivity::class.java
+                                                    )
+                                                )
+                                                menuExpanded = false
+                                            }
+                                        )
                                     }
                                 }
                             },

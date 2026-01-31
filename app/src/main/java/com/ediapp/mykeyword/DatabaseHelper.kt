@@ -449,7 +449,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
         val memos = mutableListOf<Memo>()
         val db = readableDatabase
 
-        val selection = if (status == null) "$MEMOS_COL_DELETED_AT = 0" else "$MEMOS_COL_DELETED_AT = 0 and $MEMOS_COL_STATUS = '$status'"
+        val selection = if (status == null) "$MEMOS_COL_DELETED_AT = 0" else "$MEMOS_COL_DELETED_AT = 0 and $MEMOS_COL_STATUS in ('A','R') "
 
         val cursor = db.query(TABLE_MEMOS, null, selection, null, null, null, "$MEMOS_COL_REG_DATE DESC")
 
