@@ -1,5 +1,6 @@
 package com.ediapp.mykeyword.ui.home
 
+import android.icu.text.SimpleDateFormat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+//import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ediapp.mykeyword.AppDestinations
@@ -42,6 +44,7 @@ import com.ediapp.mykeyword.Keyword
 import com.ediapp.mykeyword.KomoranAnalyzer
 import com.ediapp.mykeyword.R
 import com.ediapp.mykeyword.ui.notey.Memo
+import com.ediapp.mykeyword.utils.formatRegDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -103,7 +106,7 @@ fun HomeScreen(
                                 address = null,
                                 regDate = System.currentTimeMillis()
                             )
-                            dbHelper.addKeywords(analyzer, newMemoText, newId)
+                            recentMemos = dbHelper.getRecentMemos(limit = 3) // "최근메모"를 즉시 업데이트
                         }
                         newMemoText = ""
                         refreshTrigger++
@@ -155,15 +158,19 @@ fun MemoItem(memo: Memo, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = memo.title ?: "제목 없음",
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = formatRegDate(memo.regDate),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
             )
         }
     }
@@ -189,5 +196,5 @@ fun KeywordCloud(keywords: List<Keyword>) {
                 )
             }
         }
+        }
     }
-}

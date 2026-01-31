@@ -280,7 +280,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             null,
             null,
             null,
-            "$MEMOS_COL_TIMESTAMP DESC",
+            "$MEMOS_COL_REG_DATE DESC",
             limit.toString()
         )
 
@@ -451,7 +451,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
 
         val selection = if (status == null) "$MEMOS_COL_DELETED_AT = 0" else "$MEMOS_COL_DELETED_AT = 0 and $MEMOS_COL_STATUS = '$status'"
 
-        val cursor = db.query(TABLE_MEMOS, null, selection, null, null, null, "$MEMOS_COL_TIMESTAMP DESC")
+        val cursor = db.query(TABLE_MEMOS, null, selection, null, null, null, "$MEMOS_COL_REG_DATE DESC")
 
         if (cursor.moveToFirst()) {
             do {
@@ -527,7 +527,7 @@ class DatabaseHelper private constructor(private val context: Context) : SQLiteO
             selectionArgs.toTypedArray(),
             null,
             null,
-            "$MEMOS_COL_TIMESTAMP DESC",
+            "$MEMOS_COL_REG_DATE DESC",
             "$limit OFFSET $offset"
         )
 

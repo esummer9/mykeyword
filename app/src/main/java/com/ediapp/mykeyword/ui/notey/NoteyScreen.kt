@@ -28,8 +28,7 @@ import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.MemoActivity
 import com.ediapp.mykeyword.MemoViewActivity
 import com.ediapp.mykeyword.R
-import java.text.SimpleDateFormat
-import java.util.*
+import com.ediapp.mykeyword.utils.formatRegDate
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -159,9 +158,9 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 TextField(
                     value = quickMemoText,
                     onValueChange = { quickMemoText = it },
-                    placeholder = { Text("Quick memo...") },
+                    placeholder = { Text("빠른메모 입력...") },
                     modifier = Modifier.weight(1f),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(5.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
@@ -283,23 +282,5 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                 }
             }
         )
-    }
-}
-
-private fun formatRegDate(regDate: Long?): String {
-    if (regDate == null) return ""
-
-    val currentTime = System.currentTimeMillis()
-    val diff = currentTime - regDate
-    val seconds = diff / 1000
-    val minutes = seconds / 60
-    val hours = minutes / 60
-    val days = hours / 24
-
-    return when {
-        days > 0 -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(regDate))
-        hours > 0 -> "${hours}시간 전"
-        minutes > 0 -> "${minutes}분 전"
-        else -> "방금 전"
     }
 }

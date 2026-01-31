@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.androidx.compose.material3) // Add this line
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
 
     testImplementation(libs.junit)

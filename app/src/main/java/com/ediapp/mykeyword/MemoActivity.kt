@@ -221,7 +221,6 @@ fun EditMemoScreen(memoId: Long, onSave: () -> Unit, onNavigateBack: () -> Unit)
                     .verticalScroll(rememberScrollState())
             ) {
 
-
                 TextField(value = title, onValueChange = { title = it }, label = { Text(stringResource(id = R.string.title)) }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors, singleLine = true)
                 TextField(value = meaning, onValueChange = { meaning = it }, label = { Text("의미") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors, minLines = 3)
                 TextField(value = url, { url = it }, label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), colors = transparentTextFieldColors)
