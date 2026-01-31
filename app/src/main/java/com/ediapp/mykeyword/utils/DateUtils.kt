@@ -14,7 +14,7 @@ fun formatRegDate(regDate: Long?): String {
     val days = hours / 24
 
     return when {
-        days > 0 -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(regDate))
+        days > 0 -> SimpleDateFormat("yyyy-MM-dd EEE", Locale.getDefault()).format(Date(regDate))
         hours > 0 -> "${hours}시간 전"
         minutes > 0 -> "${minutes}분 전"
         else -> "방금 전"

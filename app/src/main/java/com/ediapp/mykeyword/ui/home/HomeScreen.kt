@@ -42,12 +42,14 @@ import com.ediapp.mykeyword.AppDestinations
 import com.ediapp.mykeyword.DatabaseHelper
 import com.ediapp.mykeyword.Keyword
 import com.ediapp.mykeyword.KomoranAnalyzer
+import com.ediapp.mykeyword.MemoActivity
 import com.ediapp.mykeyword.R
 import com.ediapp.mykeyword.ui.notey.Memo
 import com.ediapp.mykeyword.utils.formatRegDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.content.Intent
 
 @Composable
 fun HomeScreen(
@@ -132,7 +134,12 @@ fun HomeScreen(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 recentMemos.forEach { memo ->
-                    MemoItem(memo = memo, onClick = { onNavigate(AppDestinations.NOTEY) })
+                    MemoItem(memo = memo, onClick = {
+                        val intent = Intent(context, MemoActivity::class.java).apply {
+                            putExtra("MEMO_ID", memo.id)
+                        }
+                        context.startActivity(intent)
+                    })
                 }
             }
         }
