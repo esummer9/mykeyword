@@ -3,6 +3,7 @@ package com.ediapp.mykeyword
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -31,6 +32,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
 import androidx.compose.material3.TopAppBar
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 class ExchangeActivity : ComponentActivity() {
@@ -41,7 +44,7 @@ class ExchangeActivity : ComponentActivity() {
     private val importLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        if (result.resultCode == RESULT_OK) {
             result.data?.data?.let { uri ->
                 processImportFile(uri)
             }
@@ -50,6 +53,9 @@ class ExchangeActivity : ComponentActivity() {
 
     private var showProcessingDialog by mutableStateOf(false)
     private var processingMessage by mutableStateOf("")
+
+    private var showResultDialog by mutableStateOf(false)
+    private var resultMessage by mutableStateOf("")
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,6 +96,13 @@ class ExchangeActivity : ComponentActivity() {
                 if (showProcessingDialog) {
                     ProcessingBackupDialog(message = processingMessage)
                 }
+
+                if (showResultDialog) {
+                    ResultDialog(
+                        message = resultMessage,
+                        onDismiss = { showResultDialog = false }
+                    )
+                }
             }
         }
     }
@@ -105,7 +118,10 @@ class ExchangeActivity : ComponentActivity() {
                 val exportData = ExportData(memosToExport, userDictToExport)
                 val json = gson.toJson(exportData)
 
-                val file = File(cacheDir, "mykeyword_backup.json")
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val currentDate = dateFormat.format(System.currentTimeMillis())
+                val filename = "mykeyword_backup_${currentDate}.json"
+                val file = File(cacheDir, filename)
                 file.writeText(json)
 
                 val uri = FileProvider.getUriForFile(this@ExchangeActivity, "${packageName}.provider", file)
@@ -118,6 +134,8 @@ class ExchangeActivity : ComponentActivity() {
 
                 withContext(Dispatchers.Main) {
                     showProcessingDialog = false
+                    resultMessage = "데이터 내보내기 성공!"
+                    showResultDialog = true
                     startActivity(Intent.createChooser(shareIntent, "MyKeyword 데이터 공유"))
                 }
 
@@ -126,6 +144,8 @@ class ExchangeActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     processingMessage = "내보내기 실패: ${e.message}"
                     showProcessingDialog = false
+                    resultMessage = "내보내기 실패: ${e.message}"
+                    showResultDialog = true
                 }
             }
         }
@@ -139,7 +159,7 @@ class ExchangeActivity : ComponentActivity() {
         importLauncher.launch(Intent.createChooser(intent, "MyKeyword 데이터 파일 선택"))
     }
 
-    private fun processImportFile(uri: android.net.Uri) {
+    private fun processImportFile(uri: Uri) {
         showProcessingDialog = true
         processingMessage = "데이터 가져오기 및 병합 중..."
         lifecycleScope.launch(Dispatchers.IO) {
@@ -181,6 +201,8 @@ class ExchangeActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     processingMessage = "가져오기 및 병합 완료! (새 메모: $newMemosAdded, 새 단어: $newWordsAdded)"
                     showProcessingDialog = false
+                    resultMessage = "가져오기 및 병합 완료! (새 메모: $newMemosAdded, 새 단어: $newWordsAdded)"
+                    showResultDialog = true
                 }
 
             } catch (e: Exception) {
@@ -188,6 +210,8 @@ class ExchangeActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     processingMessage = "가져오기 실패: ${e.message}"
                     showProcessingDialog = false
+                    resultMessage = "가져오기 실패: ${e.message}"
+                    showResultDialog = true
                 }
             }
         }
@@ -217,5 +241,19 @@ fun ProcessingBackupDialog(message: String) {
             }
         },
         confirmButton = {}
+    )
+}
+
+@Composable
+fun ResultDialog(message: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "결과") },
+        text = { Text(text = message) },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("확인")
+            }
+        }
     )
 }
