@@ -231,13 +231,6 @@ fun NoteyScreen(refreshTrigger: Int = 0, searchVisible: Boolean) {
                             expanded = expandedMemo == memo,
                             onDismissRequest = { expandedMemo = null }
                         ) {
-                            DropdownMenuItem(text = { Text(stringResource(id = R.string.edit)) }, onClick = {
-                                val intent = Intent(context, MemoActivity::class.java)
-                                intent.putExtra("MEMO_ID", memo.id)
-                                editMemoLauncher.launch(intent)
-                                expandedMemo = null
-                            })
-
                             DropdownMenuItem(text = { Text(stringResource(id = R.string.duplicate)) }, onClick = {
                                 viewModel.duplicateMemo(memo.id)
                                 expandedMemo = null
